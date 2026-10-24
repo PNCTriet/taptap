@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Award, Lock, TicketCheck } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 
 export default function RewardDetailPage() {
   const params = useParams<{ id: string }>();
@@ -13,6 +14,7 @@ export default function RewardDetailPage() {
   const {
     locale,
     t,
+    isAuthenticated,
     rewards,
     collectedStamps,
     redemptions,
@@ -68,7 +70,13 @@ export default function RewardDetailPage() {
           </p>
         </div>
 
-        {!isEligible ? (
+        {!isAuthenticated ? (
+          <GoogleSignInButton
+            nextPath={`/rewards/${reward.id}`}
+            labelEn="Continue with Google to claim"
+            labelVi="Đăng nhập Gmail để nhận thưởng"
+          />
+        ) : !isEligible ? (
           <div className="rounded-2xl bg-[#F5EFE2] p-4 flex items-center justify-between">
             <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#525D58]">
               <Lock className="h-4 w-4" />

@@ -1,13 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
-import { Check, RotateCcw, Sparkles } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Check, LogOut, RotateCcw, Sparkles } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
+import { GoogleIcon, GoogleSignInButton } from "@/components/google-sign-in-button";
 
 export default function ProfilePage() {
   const {
     locale,
     setLocale,
+    isAuthenticated,
+    user,
+    signOut,
     session,
     updateDisplayName,
     collectedStamps,
@@ -17,6 +21,10 @@ export default function ProfilePage() {
 
   const [nameInput, setNameInput] = useState(session.displayName);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setNameInput(session.displayName);
+  }, [session.displayName]);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +41,41 @@ export default function ProfilePage() {
 
       {/* Clean iOS-Style Grouped List */}
       <div className="paper-card divide-y divide-[#E6DECB] overflow-hidden">
+        {/* Google Account Row */}
+        <div className="p-4 space-y-3">
+          {isAuthenticated && user ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#E6DECB] bg-white">
+                  <GoogleIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-extrabold text-[#272E2B]">
+                    {user.name}
+                  </p>
+                  <p className="truncate text-xs font-semibold text-[#525D58]">
+                    {user.email ?? "Gmail Linked"}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void signOut()}
+                className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full border border-[#E6DECB] bg-[#FAF5EA] px-3.5 py-1.5 text-xs font-extrabold text-[#272E2B] hover:bg-[#EDE6D6] cursor-pointer"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>{locale === "vi" ? "Đăng xuất" : "Sign out"}</span>
+              </button>
+            </div>
+          ) : (
+            <GoogleSignInButton
+              nextPath="/profile"
+              labelEn="Continue with Google"
+              labelVi="Đăng nhập Gmail"
+            />
+          )}
+        </div>
+
         {/* Display Name */}
         <form onSubmit={handleSave} className="p-4 space-y-2">
           <label
@@ -92,11 +135,13 @@ export default function ProfilePage() {
             {locale === "vi" ? "Trạng thái" : "Session"}
           </span>
           <span className="font-mono font-semibold text-[#272E2B]">
-            {session.isAnonymous
+            {isAuthenticated
               ? locale === "vi"
-                ? "Khách ẩn danh"
-                : "Guest"
-              : "Linked"}{" "}
+                ? "Đã liên kết Gmail"
+                : "Google Linked"
+              : locale === "vi"
+                ? "Chưa đăng nhập"
+                : "Signed out"}{" "}
             • {collectedStamps.length} {locale === "vi" ? "tem" : "stamps"}
           </span>
         </div>

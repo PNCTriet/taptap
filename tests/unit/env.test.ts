@@ -3,6 +3,7 @@ import {
   getEnvStatus,
   getPublicEnv,
   getServerEnv,
+  sanitizeNextPath,
   validatePublicCode,
 } from "@/lib/env";
 import { resolveStationByPublicCode } from "@/server/stations/resolve-station";
@@ -54,10 +55,23 @@ describe("Environment Validation (src/lib/env.ts)", () => {
   });
 });
 
+describe("OAuth Callback Next-Path Sanitizer (src/app/auth/callback/route.ts)", () => {
+  it("allows safe internal relative paths and rejects open redirects", () => {
+    expect(sanitizeNextPath("/s/tcv-k9x2m4p8")).toBe("/s/tcv-k9x2m4p8");
+    expect(sanitizeNextPath("/passport")).toBe("/passport");
+    expect(sanitizeNextPath(null)).toBe("/passport");
+    expect(sanitizeNextPath("//evil.example.com")).toBe("/passport");
+    expect(sanitizeNextPath("https://evil.example.com")).toBe("/passport");
+    expect(sanitizeNextPath("/\\evil.example.com")).toBe("/passport");
+  });
+});
+
 describe("NFC / QR Public Code Validation & Station Resolution", () => {
   it("accepts non-sequential alphanumeric public codes of length >= 6", () => {
     expect(validatePublicCode("tcv-k9x2m4p8").success).toBe(true);
-    expect(validatePublicCode("tcv-q7w3n5r2").success).toBe(true);
+    expect(validatePublicCode("tcv-b7n4q1w6").success).toBe(true);
+    expect(validatePublicCode("tcv-m3p9x5r2").success).toBe(true);
+    expect(validatePublicCode("tcv-w2v8k6j4").success).toBe(true);
   });
 
   it("rejects short or malformed public codes", () => {
@@ -66,12 +80,19 @@ describe("NFC / QR Public Code Validation & Station Resolution", () => {
     expect(validatePublicCode("tcv-k9x2<script>").success).toBe(false);
   });
 
-  it("resolves known Saigon Zoo stations (Elephant, Giraffe, Flamingo, Conservatory)", async () => {
+  it("resolves all 4 Saigon Zoo stations and matches seed.sql public codes", async () => {
     expect(PILOT_STATIONS.map((s) => s.slug)).toEqual([
-      "elephant",
-      "giraffe",
-      "flamingo",
+      "asian-elephant",
       "botanical-conservatory",
+      "flamingo-lagoon",
+      "giraffe-lookout",
+    ]);
+
+    expect(PILOT_STATIONS.map((s) => s.tag.publicCode)).toEqual([
+      "tcv-k9x2m4p8",
+      "tcv-b7n4q1w6",
+      "tcv-m3p9x5r2",
+      "tcv-w2v8k6j4",
     ]);
 
     const collection = findPilotCollectionBySlug("zoo-explorer");
@@ -79,10 +100,13 @@ describe("NFC / QR Public Code Validation & Station Resolution", () => {
 
     const elephant = await resolveStationByPublicCode("tcv-k9x2m4p8");
     expect(elephant.status).toBe("ok");
-    expect(elephant.station?.name.en).toBe("Elephant");
+    expect(elephant.station?.name.en).toBe("Asian Elephant");
 
-    const giraffe = findPilotStationByCode("TCV-Q7W3N5R2");
-    expect(giraffe?.name.en).toBe("Giraffe");
+    const conservatory = findPilotStationByCode("TCV-B7N4Q1W6");
+    expect(conservatory?.name.en).toBe("Botanical Conservatory");
+
+    const giraffe = findPilotStationByCode("tcv-w2v8k6j4");
+    expect(giraffe?.name.en).toBe("Giraffe Lookout");
   });
 
   it("handles disabled and unknown tag codes gracefully", async () => {
