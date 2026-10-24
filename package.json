@@ -1,0 +1,42 @@
+{
+  "name": "taptap",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TAPTAP — NFC-powered digital stamp collection platform by HOWLSLAB",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:types": "supabase gen types typescript --local > src/types/database.types.ts"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.0.1",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "lucide-react": "^0.511.0",
+    "next": "^15.3.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-hook-form": "^7.56.4",
+    "server-only": "^0.0.1",
+    "zod": "^3.25.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@playwright/test": "^1.52.0",
+    "@tailwindcss/postcss": "^4.1.7",
+    "@types/node": "^22.15.18",
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.4",
+    "eslint": "^9.27.0",
+    "eslint-config-next": "^15.3.2",
+    "tailwindcss": "^4.1.7",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
+  }
+}
