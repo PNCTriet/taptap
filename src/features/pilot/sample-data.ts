@@ -41,8 +41,8 @@ export const PILOT_COLLECTIONS: PilotCollection[] = [
       vi: "4 trạm dừng • Thảo Cầm Viên",
     },
     description: {
-      en: "Collect all 4 wildlife stamps across the shaded heritage trail.",
-      vi: "Sưu tầm đủ 4 con dấu trên hành trình khám phá.",
+      en: "Collect all 4 stamps across Saigon Zoo.",
+      vi: "Sưu tầm đủ 4 con dấu tại Thảo Cầm Viên.",
     },
     coverImageUrl:
       "https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=1200&q=80",
@@ -57,18 +57,18 @@ export const PILOT_STATIONS: PilotStation[] = [
     id: "33333333-3333-4333-8333-333333333301",
     venueId: PILOT_VENUE.id,
     collectionId: "22222222-2222-4222-8222-222222222201",
-    slug: "elephant",
+    slug: "asian-elephant",
     name: {
-      en: "Elephant",
+      en: "Asian Elephant",
       vi: "Voi Châu Á",
     },
     description: {
-      en: "Gentle Asian elephants beneath the century-old forest canopy.",
-      vi: "Những chú voi châu Á hiền hòa dưới tán rừng cổ thụ.",
+      en: "Gentle elephants beneath the century-old forest canopy.",
+      vi: "Những chú voi hiền hòa dưới tán rừng cổ thụ.",
     },
     funFact: {
-      en: "Elephants greet each other with low rumbles and trunk touches.",
-      vi: "Voi chào nhau bằng âm trầm và cái chạm vòi nhẹ nhàng.",
+      en: "Elephants greet each other with low rumbles.",
+      vi: "Voi chào nhau bằng âm trầm nhẹ nhàng.",
     },
     locationHint: {
       en: "East Heritage Path",
@@ -80,13 +80,13 @@ export const PILOT_STATIONS: PilotStation[] = [
     tag: {
       id: "44444444-4444-4444-8444-444444444401",
       publicCode: "tcv-k9x2m4p8",
-      label: "Elephant — NFC #1",
+      label: "Asian Elephant — NFC #1",
       status: "active",
     },
     stamp: {
       id: "55555555-5555-4555-8555-555555555501",
       name: {
-        en: "Elephant",
+        en: "Asian Elephant",
         vi: "Voi Châu Á",
       },
       description: {
@@ -104,10 +104,104 @@ export const PILOT_STATIONS: PilotStation[] = [
     id: "33333333-3333-4333-8333-333333333302",
     venueId: PILOT_VENUE.id,
     collectionId: "22222222-2222-4222-8222-222222222201",
-    slug: "giraffe",
+    slug: "botanical-conservatory",
     name: {
-      en: "Giraffe",
-      vi: "Hươu Cao Cổ",
+      en: "Botanical Conservatory",
+      vi: "Nhà Kính Thực Vật",
+    },
+    description: {
+      en: "Rare orchids and tropical ferns inside the glasshouse.",
+      vi: "Phong lan quý và dương xỉ nhiệt đới trong nhà kính.",
+    },
+    funFact: {
+      en: "Home to over 260 rare plant species since 1864.",
+      vi: "Bảo tồn hơn 260 loài thực vật quý từ năm 1864.",
+    },
+    locationHint: {
+      en: "Botanical Glasshouse",
+      vi: "Khu Nhà Kính",
+    },
+    imageUrl:
+      "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80",
+    status: "active",
+    tag: {
+      id: "44444444-4444-4444-8444-444444444402",
+      publicCode: "tcv-b7n4q1w6",
+      label: "Botanical Conservatory — NFC #2",
+      status: "active",
+    },
+    stamp: {
+      id: "55555555-5555-4555-8555-555555555502",
+      name: {
+        en: "Botanical Conservatory",
+        vi: "Nhà Kính Thực Vật",
+      },
+      description: {
+        en: "Botanical Glasshouse",
+        vi: "Khu Nhà Kính",
+      },
+      imageUrl:
+        "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80",
+      sortOrder: 2,
+      status: "active",
+      accentColor: "yellow",
+    },
+  },
+  {
+    id: "33333333-3333-4333-8333-333333333303",
+    venueId: PILOT_VENUE.id,
+    collectionId: "22222222-2222-4222-8222-222222222201",
+    slug: "flamingo-lagoon",
+    name: {
+      en: "Flamingo Lagoon",
+      vi: "Đầm Hồng Hạc",
+    },
+    description: {
+      en: "Coral-pink flamingos gathered along the sunlit lotus lake.",
+      vi: "Đàn hồng hạc rực rỡ bên hồ sen ngập nắng.",
+    },
+    funFact: {
+      en: "Their coral feathers come from natural aquatic pigments.",
+      vi: "Sắc lông hồng cam đến từ sắc tố tự nhiên.",
+    },
+    locationHint: {
+      en: "Central Lagoon",
+      vi: "Hồ Trung Tâm",
+    },
+    imageUrl:
+      "https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80",
+    status: "active",
+    tag: {
+      id: "44444444-4444-4444-8444-444444444403",
+      publicCode: "tcv-m3p9x5r2",
+      label: "Flamingo Lagoon — NFC #3",
+      status: "active",
+    },
+    stamp: {
+      id: "55555555-5555-4555-8555-555555555503",
+      name: {
+        en: "Flamingo Lagoon",
+        vi: "Đầm Hồng Hạc",
+      },
+      description: {
+        en: "Central Lagoon",
+        vi: "Hồ Trung Tâm",
+      },
+      imageUrl:
+        "https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80",
+      sortOrder: 3,
+      status: "active",
+      accentColor: "coral",
+    },
+  },
+  {
+    id: "33333333-3333-4333-8333-333333333304",
+    venueId: PILOT_VENUE.id,
+    collectionId: "22222222-2222-4222-8222-222222222201",
+    slug: "giraffe-lookout",
+    name: {
+      en: "Giraffe Lookout",
+      vi: "Đài Hươu Cao Cổ",
     },
     description: {
       en: "Watch giraffes browse high among the acacia treetops.",
@@ -125,16 +219,16 @@ export const PILOT_STATIONS: PilotStation[] = [
       "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80",
     status: "active",
     tag: {
-      id: "44444444-4444-4444-8444-444444444402",
-      publicCode: "tcv-q7w3n5r2",
-      label: "Giraffe — NFC #2",
+      id: "44444444-4444-4444-8444-444444444404",
+      publicCode: "tcv-w2v8k6j4",
+      label: "Giraffe Lookout — NFC #4",
       status: "active",
     },
     stamp: {
-      id: "55555555-5555-4555-8555-555555555502",
+      id: "55555555-5555-4555-8555-555555555504",
       name: {
-        en: "Giraffe",
-        vi: "Hươu Cao Cổ",
+        en: "Giraffe Lookout",
+        vi: "Đài Hươu Cao Cổ",
       },
       description: {
         en: "North Savanna Deck",
@@ -142,100 +236,6 @@ export const PILOT_STATIONS: PilotStation[] = [
       },
       imageUrl:
         "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80",
-      sortOrder: 2,
-      status: "active",
-      accentColor: "yellow",
-    },
-  },
-  {
-    id: "33333333-3333-4333-8333-333333333303",
-    venueId: PILOT_VENUE.id,
-    collectionId: "22222222-2222-4222-8222-222222222201",
-    slug: "flamingo",
-    name: {
-      en: "Flamingo",
-      vi: "Hồng Hạc",
-    },
-    description: {
-      en: "Coral-pink flamingos gathered along the sunlit lotus lagoon.",
-      vi: "Đàn hồng hạc rực rỡ bên hồ sen ngập nắng.",
-    },
-    funFact: {
-      en: "Their coral feathers come from natural aquatic pigments.",
-      vi: "Sắc lông hồng cam đến từ sắc tố tự nhiên.",
-    },
-    locationHint: {
-      en: "Central Lagoon",
-      vi: "Hồ Trung Tâm",
-    },
-    imageUrl:
-      "https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80",
-    status: "active",
-    tag: {
-      id: "44444444-4444-4444-8444-444444444403",
-      publicCode: "tcv-h4j8v6b1",
-      label: "Flamingo — NFC #3",
-      status: "active",
-    },
-    stamp: {
-      id: "55555555-5555-4555-8555-555555555503",
-      name: {
-        en: "Flamingo",
-        vi: "Hồng Hạc",
-      },
-      description: {
-        en: "Central Lagoon",
-        vi: "Hồ Trung Tâm",
-      },
-      imageUrl:
-        "https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80",
-      sortOrder: 3,
-      status: "active",
-      accentColor: "coral",
-    },
-  },
-  {
-    id: "33333333-3333-4333-8333-333333333304",
-    venueId: PILOT_VENUE.id,
-    collectionId: "22222222-2222-4222-8222-222222222201",
-    slug: "botanical-conservatory",
-    name: {
-      en: "Botanical Conservatory",
-      vi: "Nhà Kính Thực Vật",
-    },
-    description: {
-      en: "Rare orchids and heritage bonsai inside the glasshouse.",
-      vi: "Phong lan quý và bonsai cổ thụ trong nhà kính.",
-    },
-    funFact: {
-      en: "Home to over 260 rare tropical plant species since 1864.",
-      vi: "Bảo tồn hơn 260 loài thực vật quý từ năm 1864.",
-    },
-    locationHint: {
-      en: "Botanical Glasshouse",
-      vi: "Khu Nhà Kính",
-    },
-    imageUrl:
-      "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80",
-    status: "active",
-    tag: {
-      id: "44444444-4444-4444-8444-444444444404",
-      publicCode: "tcv-z2c9f3t7",
-      label: "Conservatory — NFC #4",
-      status: "active",
-    },
-    stamp: {
-      id: "55555555-5555-4555-8555-555555555504",
-      name: {
-        en: "Conservatory",
-        vi: "Nhà Kính",
-      },
-      description: {
-        en: "Botanical Glasshouse",
-        vi: "Khu Nhà Kính",
-      },
-      imageUrl:
-        "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80",
       sortOrder: 4,
       status: "active",
       accentColor: "blue",
@@ -243,13 +243,20 @@ export const PILOT_STATIONS: PilotStation[] = [
   },
 ];
 
+// Secondary alias codes map to the same stations so any earlier test links also work seamlessly
+const LEGACY_CODE_ALIASES: Record<string, string> = {
+  "tcv-q7w3n5r2": "tcv-b7n4q1w6",
+  "tcv-h4j8v6b1": "tcv-m3p9x5r2",
+  "tcv-z2c9f3t7": "tcv-w2v8k6j4",
+};
+
 export const DISABLED_DEMO_TAG_CODES: Record<
   string,
   { stationSlug: string; label: string; status: "disabled" | "lost" | "replaced" }
 > = {
   "tcv-disabled99": {
-    stationSlug: "elephant",
-    label: "Elephant — Retired Tag",
+    stationSlug: "asian-elephant",
+    label: "Asian Elephant — Retired Tag",
     status: "disabled",
   },
 };
@@ -299,7 +306,10 @@ export function findPilotCollectionBySlug(slug: string): PilotCollection | undef
 
 export function findPilotStationByCode(publicCode: string): PilotStation | undefined {
   const normalized = publicCode.trim().toLowerCase();
-  return PILOT_STATIONS.find((s) => s.tag.publicCode.toLowerCase() === normalized);
+  const canonical = LEGACY_CODE_ALIASES[normalized] ?? normalized;
+  return PILOT_STATIONS.find(
+    (s) => s.tag.publicCode.toLowerCase() === canonical
+  );
 }
 
 export function findPilotRewardById(rewardId: string): PilotReward | undefined {

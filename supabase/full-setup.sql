@@ -1,0 +1,890 @@
+-- =============================================================================
+-- TAPTAP — Schema & Row-Level Security (Google OAuth + Supabase Persistence)
+-- =============================================================================
+
+create extension if not exists "pgcrypto";
+
+-- -----------------------------------------------------------------------------
+-- 1. Automatic updated_at trigger helper
+-- -----------------------------------------------------------------------------
+create or replace function public.handle_updated_at()
+returns trigger
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  new.updated_at = timezone('utc'::text, now());
+  return new;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- 2. Tables
+-- -----------------------------------------------------------------------------
+
+-- 2.1 venues
+create table if not exists public.venues (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  slug text not null unique,
+  description text,
+  cover_image_url text,
+  status text not null default 'draft' check (status in ('draft', 'active', 'archived')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+-- 2.2 venue_admins
+create table if not exists public.venue_admins (
+  id uuid primary key default gen_random_uuid(),
+  venue_id uuid not null references public.venues(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null default 'venue_admin' check (role in ('venue_admin', 'venue_editor')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  unique (venue_id, user_id)
+);
+
+-- 2.3 collections
+create table if not exists public.collections (
+  id uuid primary key default gen_random_uuid(),
+  venue_id uuid not null references public.venues(id) on delete cascade,
+  name text not null,
+  slug text not null unique,
+  description text,
+  cover_image_url text,
+  completion_criteria jsonb not null default '{"type": "all_stamps", "required_count": 4}'::jsonb,
+  status text not null default 'draft' check (status in ('draft', 'active', 'archived')),
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+-- 2.4 stations
+create table if not exists public.stations (
+  id uuid primary key default gen_random_uuid(),
+  venue_id uuid not null references public.venues(id) on delete cascade,
+  name text not null,
+  slug text not null,
+  description text,
+  image_url text,
+  location_hint text,
+  status text not null default 'active' check (status in ('active', 'maintenance', 'inactive')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  unique (venue_id, slug)
+);
+
+-- 2.5 nfc_tags
+create table if not exists public.nfc_tags (
+  id uuid primary key default gen_random_uuid(),
+  station_id uuid not null references public.stations(id) on delete cascade,
+  public_code text not null unique check (char_length(public_code) >= 6),
+  label text,
+  status text not null default 'active' check (status in ('active', 'disabled', 'lost', 'replaced')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+-- 2.6 stamps
+create table if not exists public.stamps (
+  id uuid primary key default gen_random_uuid(),
+  collection_id uuid not null references public.collections(id) on delete cascade,
+  station_id uuid not null references public.stations(id) on delete cascade,
+  name text not null,
+  description text,
+  image_url text,
+  sort_order integer not null default 0,
+  status text not null default 'active' check (status in ('active', 'inactive')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  unique (collection_id, station_id)
+);
+
+-- 2.7 participants
+create table if not exists public.participants (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid unique references auth.users(id) on delete set null,
+  guest_token_hash text unique,
+  display_name text,
+  locale text not null default 'en' check (locale in ('en', 'vi')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+-- 2.8 collected_stamps
+create table if not exists public.collected_stamps (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  stamp_id uuid not null references public.stamps(id) on delete cascade,
+  nfc_tag_id uuid references public.nfc_tags(id) on delete set null,
+  collected_at timestamptz not null default timezone('utc'::text, now()),
+  source text not null default 'nfc' check (source in ('nfc', 'qr', 'admin')),
+  unique (participant_id, stamp_id)
+);
+
+-- 2.9 badges
+create table if not exists public.badges (
+  id uuid primary key default gen_random_uuid(),
+  collection_id uuid not null references public.collections(id) on delete cascade,
+  name text not null,
+  description text,
+  image_url text,
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+-- 2.10 participant_badges
+create table if not exists public.participant_badges (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  badge_id uuid not null references public.badges(id) on delete cascade,
+  unlocked_at timestamptz not null default timezone('utc'::text, now()),
+  unique (participant_id, badge_id)
+);
+
+-- 2.11 rewards
+create table if not exists public.rewards (
+  id uuid primary key default gen_random_uuid(),
+  collection_id uuid not null references public.collections(id) on delete cascade,
+  name text not null,
+  description text,
+  image_url text,
+  redemption_instructions text,
+  status text not null default 'active' check (status in ('active', 'paused', 'exhausted')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  updated_at timestamptz not null default timezone('utc'::text, now())
+);
+
+-- 2.12 redemptions
+create table if not exists public.redemptions (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  reward_id uuid not null references public.rewards(id) on delete restrict,
+  redemption_code text not null unique,
+  status text not null default 'issued' check (status in ('issued', 'redeemed', 'expired', 'cancelled')),
+  created_at timestamptz not null default timezone('utc'::text, now()),
+  redeemed_at timestamptz,
+  updated_at timestamptz not null default timezone('utc'::text, now()),
+  unique (participant_id, reward_id)
+);
+
+-- -----------------------------------------------------------------------------
+-- 3. Indexes
+-- -----------------------------------------------------------------------------
+create index if not exists idx_collections_venue_id on public.collections(venue_id);
+create index if not exists idx_stations_venue_id on public.stations(venue_id);
+create index if not exists idx_nfc_tags_station_id on public.nfc_tags(station_id);
+create index if not exists idx_nfc_tags_public_code on public.nfc_tags(public_code);
+create index if not exists idx_stamps_collection_id on public.stamps(collection_id);
+create index if not exists idx_stamps_station_id on public.stamps(station_id);
+create index if not exists idx_collected_stamps_participant_id on public.collected_stamps(participant_id);
+create index if not exists idx_collected_stamps_stamp_id on public.collected_stamps(stamp_id);
+create index if not exists idx_participant_badges_participant_id on public.participant_badges(participant_id);
+create index if not exists idx_redemptions_participant_id on public.redemptions(participant_id);
+
+-- -----------------------------------------------------------------------------
+-- 4. Updated_at Triggers
+-- -----------------------------------------------------------------------------
+drop trigger if exists set_venues_updated_at on public.venues;
+create trigger set_venues_updated_at
+  before update on public.venues
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_collections_updated_at on public.collections;
+create trigger set_collections_updated_at
+  before update on public.collections
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_stations_updated_at on public.stations;
+create trigger set_stations_updated_at
+  before update on public.stations
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_nfc_tags_updated_at on public.nfc_tags;
+create trigger set_nfc_tags_updated_at
+  before update on public.nfc_tags
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_stamps_updated_at on public.stamps;
+create trigger set_stamps_updated_at
+  before update on public.stamps
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_participants_updated_at on public.participants;
+create trigger set_participants_updated_at
+  before update on public.participants
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_badges_updated_at on public.badges;
+create trigger set_badges_updated_at
+  before update on public.badges
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_rewards_updated_at on public.rewards;
+create trigger set_rewards_updated_at
+  before update on public.rewards
+  for each row execute function public.handle_updated_at();
+
+drop trigger if exists set_redemptions_updated_at on public.redemptions;
+create trigger set_redemptions_updated_at
+  before update on public.redemptions
+  for each row execute function public.handle_updated_at();
+
+-- -----------------------------------------------------------------------------
+-- 5. Security Helper Functions for RLS
+-- -----------------------------------------------------------------------------
+create or replace function public.is_platform_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    (auth.jwt() -> 'app_metadata' ->> 'platform_role') = 'platform_admin',
+    false
+  );
+$$;
+
+create or replace function public.is_venue_admin(target_venue_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select public.is_platform_admin()
+  or exists (
+    select 1
+    from public.venue_admins va
+    where va.venue_id = target_venue_id
+      and va.user_id = (select auth.uid())
+  );
+$$;
+
+-- -----------------------------------------------------------------------------
+-- 6. Enable Row-Level Security on All 12 Tables
+-- -----------------------------------------------------------------------------
+alter table public.venues enable row level security;
+alter table public.venue_admins enable row level security;
+alter table public.collections enable row level security;
+alter table public.stations enable row level security;
+alter table public.nfc_tags enable row level security;
+alter table public.stamps enable row level security;
+alter table public.participants enable row level security;
+alter table public.collected_stamps enable row level security;
+alter table public.badges enable row level security;
+alter table public.participant_badges enable row level security;
+alter table public.rewards enable row level security;
+alter table public.redemptions enable row level security;
+
+-- -----------------------------------------------------------------------------
+-- 7. RLS Policies
+-- -----------------------------------------------------------------------------
+
+-- 7.1 venues
+drop policy if exists "venues_select_public_or_admin" on public.venues;
+create policy "venues_select_public_or_admin"
+  on public.venues for select
+  using (status = 'active' or public.is_venue_admin(id));
+
+drop policy if exists "venues_insert_platform_admin" on public.venues;
+create policy "venues_insert_platform_admin"
+  on public.venues for insert
+  with check (public.is_platform_admin());
+
+drop policy if exists "venues_update_venue_admin" on public.venues;
+create policy "venues_update_venue_admin"
+  on public.venues for update
+  using (public.is_venue_admin(id))
+  with check (public.is_venue_admin(id));
+
+drop policy if exists "venues_delete_platform_admin" on public.venues;
+create policy "venues_delete_platform_admin"
+  on public.venues for delete
+  using (public.is_platform_admin());
+
+-- 7.2 venue_admins
+drop policy if exists "venue_admins_select_own_or_admin" on public.venue_admins;
+create policy "venue_admins_select_own_or_admin"
+  on public.venue_admins for select
+  using (user_id = (select auth.uid()) or public.is_venue_admin(venue_id));
+
+drop policy if exists "venue_admins_manage_platform_admin" on public.venue_admins;
+create policy "venue_admins_manage_platform_admin"
+  on public.venue_admins for all
+  using (public.is_platform_admin())
+  with check (public.is_platform_admin());
+
+-- 7.3 collections
+drop policy if exists "collections_select_public_or_admin" on public.collections;
+create policy "collections_select_public_or_admin"
+  on public.collections for select
+  using (status = 'active' or public.is_venue_admin(venue_id));
+
+drop policy if exists "collections_manage_venue_admin" on public.collections;
+create policy "collections_manage_venue_admin"
+  on public.collections for all
+  using (public.is_venue_admin(venue_id))
+  with check (public.is_venue_admin(venue_id));
+
+-- 7.4 stations
+drop policy if exists "stations_select_public_or_admin" on public.stations;
+create policy "stations_select_public_or_admin"
+  on public.stations for select
+  using (status = 'active' or public.is_venue_admin(venue_id));
+
+drop policy if exists "stations_manage_venue_admin" on public.stations;
+create policy "stations_manage_venue_admin"
+  on public.stations for all
+  using (public.is_venue_admin(venue_id))
+  with check (public.is_venue_admin(venue_id));
+
+-- 7.5 nfc_tags
+drop policy if exists "nfc_tags_select_active_or_admin" on public.nfc_tags;
+create policy "nfc_tags_select_active_or_admin"
+  on public.nfc_tags for select
+  using (
+    status = 'active'
+    or exists (
+      select 1 from public.stations s
+      where s.id = nfc_tags.station_id
+        and public.is_venue_admin(s.venue_id)
+    )
+  );
+
+drop policy if exists "nfc_tags_manage_venue_admin" on public.nfc_tags;
+create policy "nfc_tags_manage_venue_admin"
+  on public.nfc_tags for all
+  using (
+    exists (
+      select 1 from public.stations s
+      where s.id = nfc_tags.station_id
+        and public.is_venue_admin(s.venue_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.stations s
+      where s.id = nfc_tags.station_id
+        and public.is_venue_admin(s.venue_id)
+    )
+  );
+
+-- 7.6 stamps
+drop policy if exists "stamps_select_public_or_admin" on public.stamps;
+create policy "stamps_select_public_or_admin"
+  on public.stamps for select
+  using (
+    status = 'active'
+    or exists (
+      select 1 from public.collections c
+      where c.id = stamps.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+drop policy if exists "stamps_manage_venue_admin" on public.stamps;
+create policy "stamps_manage_venue_admin"
+  on public.stamps for all
+  using (
+    exists (
+      select 1 from public.collections c
+      where c.id = stamps.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.collections c
+      where c.id = stamps.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+-- 7.7 participants (Authenticated Google users own their row via auth_user_id = auth.uid())
+drop policy if exists "participants_select_own_or_admin" on public.participants;
+create policy "participants_select_own_or_admin"
+  on public.participants for select
+  to authenticated
+  using (auth_user_id = (select auth.uid()) or public.is_platform_admin());
+
+drop policy if exists "participants_insert_authenticated" on public.participants;
+create policy "participants_insert_authenticated"
+  on public.participants for insert
+  to authenticated
+  with check (auth_user_id = (select auth.uid()) or public.is_platform_admin());
+
+drop policy if exists "participants_update_own_or_admin" on public.participants;
+create policy "participants_update_own_or_admin"
+  on public.participants for update
+  to authenticated
+  using (auth_user_id = (select auth.uid()) or public.is_platform_admin())
+  with check (auth_user_id = (select auth.uid()) or public.is_platform_admin());
+
+-- 7.8 collected_stamps (Authenticated Google users can view, collect, and reset their own stamps)
+drop policy if exists "collected_stamps_select_own_or_admin" on public.collected_stamps;
+create policy "collected_stamps_select_own_or_admin"
+  on public.collected_stamps for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+      where p.id = collected_stamps.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or exists (
+      select 1
+      from public.stamps st
+      join public.collections c on c.id = st.collection_id
+      where st.id = collected_stamps.stamp_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+drop policy if exists "collected_stamps_insert_admin_only" on public.collected_stamps;
+drop policy if exists "collected_stamps_insert_own_or_admin" on public.collected_stamps;
+create policy "collected_stamps_insert_own_or_admin"
+  on public.collected_stamps for insert
+  to authenticated
+  with check (
+    (
+      exists (
+        select 1 from public.participants p
+        where p.id = collected_stamps.participant_id
+          and p.auth_user_id = (select auth.uid())
+      )
+      and exists (
+        select 1 from public.stamps st
+        where st.id = collected_stamps.stamp_id
+          and st.status = 'active'
+      )
+    )
+    or public.is_platform_admin()
+  );
+
+drop policy if exists "collected_stamps_delete_own_or_admin" on public.collected_stamps;
+create policy "collected_stamps_delete_own_or_admin"
+  on public.collected_stamps for delete
+  to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+      where p.id = collected_stamps.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or public.is_platform_admin()
+  );
+
+-- 7.9 badges
+drop policy if exists "badges_select_public_or_admin" on public.badges;
+create policy "badges_select_public_or_admin"
+  on public.badges for select
+  using (
+    exists (
+      select 1 from public.collections c
+      where c.id = badges.collection_id
+        and (c.status = 'active' or public.is_venue_admin(c.venue_id))
+    )
+  );
+
+drop policy if exists "badges_manage_venue_admin" on public.badges;
+create policy "badges_manage_venue_admin"
+  on public.badges for all
+  using (
+    exists (
+      select 1 from public.collections c
+      where c.id = badges.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.collections c
+      where c.id = badges.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+-- 7.10 participant_badges
+drop policy if exists "participant_badges_select_own_or_admin" on public.participant_badges;
+create policy "participant_badges_select_own_or_admin"
+  on public.participant_badges for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+      where p.id = participant_badges.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or public.is_platform_admin()
+  );
+
+drop policy if exists "participant_badges_manage_platform_admin" on public.participant_badges;
+drop policy if exists "participant_badges_insert_own_or_admin" on public.participant_badges;
+create policy "participant_badges_insert_own_or_admin"
+  on public.participant_badges for insert
+  to authenticated
+  with check (
+    exists (
+      select 1 from public.participants p
+      where p.id = participant_badges.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or public.is_platform_admin()
+  );
+
+drop policy if exists "participant_badges_delete_own_or_admin" on public.participant_badges;
+create policy "participant_badges_delete_own_or_admin"
+  on public.participant_badges for delete
+  to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+      where p.id = participant_badges.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or public.is_platform_admin()
+  );
+
+-- 7.11 rewards
+drop policy if exists "rewards_select_public_or_admin" on public.rewards;
+create policy "rewards_select_public_or_admin"
+  on public.rewards for select
+  using (
+    status = 'active'
+    or exists (
+      select 1 from public.collections c
+      where c.id = rewards.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+drop policy if exists "rewards_manage_venue_admin" on public.rewards;
+create policy "rewards_manage_venue_admin"
+  on public.rewards for all
+  using (
+    exists (
+      select 1 from public.collections c
+      where c.id = rewards.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.collections c
+      where c.id = rewards.collection_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+-- 7.12 redemptions (Authenticated Google users can claim, redeem, and reset their own rewards)
+drop policy if exists "redemptions_select_own_or_admin" on public.redemptions;
+create policy "redemptions_select_own_or_admin"
+  on public.redemptions for select
+  to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+      where p.id = redemptions.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or exists (
+      select 1
+      from public.rewards r
+      join public.collections c on c.id = r.collection_id
+      where r.id = redemptions.reward_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+drop policy if exists "redemptions_insert_platform_admin" on public.redemptions;
+drop policy if exists "redemptions_insert_own_or_admin" on public.redemptions;
+create policy "redemptions_insert_own_or_admin"
+  on public.redemptions for insert
+  to authenticated
+  with check (
+    exists (
+      select 1 from public.participants p
+      where p.id = redemptions.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or public.is_platform_admin()
+  );
+
+drop policy if exists "redemptions_update_venue_admin" on public.redemptions;
+drop policy if exists "redemptions_update_own_or_admin" on public.redemptions;
+create policy "redemptions_update_own_or_admin"
+  on public.redemptions for update
+  to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+      where p.id = redemptions.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or exists (
+      select 1
+      from public.rewards r
+      join public.collections c on c.id = r.collection_id
+      where r.id = redemptions.reward_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.participants p
+      where p.id = redemptions.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or exists (
+      select 1
+      from public.rewards r
+      join public.collections c on c.id = r.collection_id
+      where r.id = redemptions.reward_id
+        and public.is_venue_admin(c.venue_id)
+    )
+  );
+
+drop policy if exists "redemptions_delete_own_or_admin" on public.redemptions;
+create policy "redemptions_delete_own_or_admin"
+  on public.redemptions for delete
+  to authenticated
+  using (
+    exists (
+      select 1 from public.participants p
+      where p.id = redemptions.participant_id
+        and p.auth_user_id = (select auth.uid())
+    )
+    or public.is_platform_admin()
+  );
+
+-- =============================================================================
+-- TAPTAP Pilot Seed: Saigon Zoo & Botanical Gardens ("Zoo Explorer")
+-- 100% aligned with src/features/pilot/sample-data.ts and idempotent
+-- =============================================================================
+
+-- 1. Pilot Venue
+insert into public.venues (id, name, slug, description, cover_image_url, status)
+values (
+  '11111111-1111-4111-8111-111111111101',
+  'Saigon Zoo',
+  'saigon-zoo',
+  'Historic botanical gardens and wildlife sanctuary in Saigon.',
+  'https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&w=1200&q=80',
+  'active'
+)
+on conflict (id) do update set
+  name = excluded.name,
+  slug = excluded.slug,
+  description = excluded.description,
+  cover_image_url = excluded.cover_image_url,
+  status = excluded.status;
+
+-- 2. Pilot Collection
+insert into public.collections (
+  id, venue_id, name, slug, description, cover_image_url, completion_criteria, status
+)
+values (
+  '22222222-2222-4222-8222-222222222201',
+  '11111111-1111-4111-8111-111111111101',
+  'Zoo Explorer',
+  'zoo-explorer',
+  'Collect all 4 stamps across Saigon Zoo.',
+  'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=1200&q=80',
+  '{"type": "all_stamps", "required_count": 4}'::jsonb,
+  'active'
+)
+on conflict (id) do update set
+  name = excluded.name,
+  slug = excluded.slug,
+  description = excluded.description,
+  cover_image_url = excluded.cover_image_url,
+  completion_criteria = excluded.completion_criteria,
+  status = excluded.status;
+
+-- Avoid unique slug/sort_order collisions when updating from earlier seed ordering
+update public.stations set slug = 'temp-' || id::text where venue_id = '11111111-1111-4111-8111-111111111101';
+delete from public.nfc_tags where public_code = 'tcv-disabled99' and id <> '44444444-4444-4444-8444-444444444499';
+update public.stamps set sort_order = sort_order + 100 where collection_id = '22222222-2222-4222-8222-222222222201';
+
+-- 3. Pilot Stations (4 Checkpoints)
+insert into public.stations (id, venue_id, name, slug, description, image_url, location_hint, status)
+values
+  (
+    '33333333-3333-4333-8333-333333333301',
+    '11111111-1111-4111-8111-111111111101',
+    'Asian Elephant',
+    'asian-elephant',
+    'Gentle elephants beneath the century-old forest canopy.',
+    'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=900&q=80',
+    'East Heritage Path',
+    'active'
+  ),
+  (
+    '33333333-3333-4333-8333-333333333302',
+    '11111111-1111-4111-8111-111111111101',
+    'Botanical Conservatory',
+    'botanical-conservatory',
+    'Rare orchids and tropical ferns inside the glasshouse.',
+    'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80',
+    'Botanical Glasshouse',
+    'active'
+  ),
+  (
+    '33333333-3333-4333-8333-333333333303',
+    '11111111-1111-4111-8111-111111111101',
+    'Flamingo Lagoon',
+    'flamingo-lagoon',
+    'Coral-pink flamingos gathered along the sunlit lotus lake.',
+    'https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80',
+    'Central Lagoon',
+    'active'
+  ),
+  (
+    '33333333-3333-4333-8333-333333333304',
+    '11111111-1111-4111-8111-111111111101',
+    'Giraffe Lookout',
+    'giraffe-lookout',
+    'Watch giraffes browse high among the acacia treetops.',
+    'https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80',
+    'North Savanna Deck',
+    'active'
+  )
+on conflict (id) do update set
+  name = excluded.name,
+  slug = excluded.slug,
+  description = excluded.description,
+  image_url = excluded.image_url,
+  location_hint = excluded.location_hint,
+  status = excluded.status;
+
+-- 4. NFC Tags (4 Active Tags + 1 Disabled Demo Tag)
+insert into public.nfc_tags (id, station_id, public_code, label, status)
+values
+  (
+    '44444444-4444-4444-8444-444444444401',
+    '33333333-3333-4333-8333-333333333301',
+    'tcv-k9x2m4p8',
+    'Asian Elephant — NFC #1',
+    'active'
+  ),
+  (
+    '44444444-4444-4444-8444-444444444402',
+    '33333333-3333-4333-8333-333333333302',
+    'tcv-b7n4q1w6',
+    'Botanical Conservatory — NFC #2',
+    'active'
+  ),
+  (
+    '44444444-4444-4444-8444-444444444403',
+    '33333333-3333-4333-8333-333333333303',
+    'tcv-m3p9x5r2',
+    'Flamingo Lagoon — NFC #3',
+    'active'
+  ),
+  (
+    '44444444-4444-4444-8444-444444444404',
+    '33333333-3333-4333-8333-333333333304',
+    'tcv-w2v8k6j4',
+    'Giraffe Lookout — NFC #4',
+    'active'
+  ),
+  (
+    '44444444-4444-4444-8444-444444444499',
+    '33333333-3333-4333-8333-333333333301',
+    'tcv-disabled99',
+    'Asian Elephant — Retired Tag',
+    'disabled'
+  )
+on conflict (id) do update set
+  station_id = excluded.station_id,
+  public_code = excluded.public_code,
+  label = excluded.label,
+  status = excluded.status;
+
+-- 5. Stamps (4 Commemorative Stamps)
+insert into public.stamps (id, collection_id, station_id, name, description, image_url, sort_order, status)
+values
+  (
+    '55555555-5555-4555-8555-555555555501',
+    '22222222-2222-4222-8222-222222222201',
+    '33333333-3333-4333-8333-333333333301',
+    'Asian Elephant',
+    'East Heritage Path',
+    'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=900&q=80',
+    1,
+    'active'
+  ),
+  (
+    '55555555-5555-4555-8555-555555555502',
+    '22222222-2222-4222-8222-222222222201',
+    '33333333-3333-4333-8333-333333333302',
+    'Botanical Conservatory',
+    'Botanical Glasshouse',
+    'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80',
+    2,
+    'active'
+  ),
+  (
+    '55555555-5555-4555-8555-555555555503',
+    '22222222-2222-4222-8222-222222222201',
+    '33333333-3333-4333-8333-333333333303',
+    'Flamingo Lagoon',
+    'Central Lagoon',
+    'https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80',
+    3,
+    'active'
+  ),
+  (
+    '55555555-5555-4555-8555-555555555504',
+    '22222222-2222-4222-8222-222222222201',
+    '33333333-3333-4333-8333-333333333304',
+    'Giraffe Lookout',
+    'North Savanna Deck',
+    'https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80',
+    4,
+    'active'
+  )
+on conflict (id) do update set
+  collection_id = excluded.collection_id,
+  station_id = excluded.station_id,
+  name = excluded.name,
+  description = excluded.description,
+  image_url = excluded.image_url,
+  sort_order = excluded.sort_order,
+  status = excluded.status;
+
+-- 6. Completion Badge
+insert into public.badges (id, collection_id, name, description, image_url)
+values (
+  '66666666-6666-4666-8666-666666666601',
+  '22222222-2222-4222-8222-222222222201',
+  'Zoo Explorer Crest',
+  'Collected all 4 Zoo Explorer stamps.',
+  '/badges/zoo-explorer-crest.svg'
+)
+on conflict (id) do update set
+  name = excluded.name,
+  description = excluded.description,
+  image_url = excluded.image_url;
+
+-- 7. Pilot Reward
+insert into public.rewards (id, collection_id, name, description, image_url, redemption_instructions, status)
+values (
+  '77777777-7777-4777-8777-777777777701',
+  '22222222-2222-4222-8222-222222222201',
+  'Botanical Postcard & Sticker Set',
+  'Illustrated postcard and sticker set for completing your passport.',
+  'https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=80',
+  'Show your code at the Main Gate Kiosk (08:30–17:00).',
+  'active'
+)
+on conflict (id) do update set
+  name = excluded.name,
+  description = excluded.description,
+  image_url = excluded.image_url,
+  redemption_instructions = excluded.redemption_instructions,
+  status = excluded.status;

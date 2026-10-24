@@ -16,7 +16,7 @@ export type RewardStatus = "active" | "paused" | "exhausted";
 export type RedemptionStatus = "issued" | "redeemed" | "expired" | "cancelled";
 export type SupportedLocale = "en" | "vi";
 
-export interface Database {
+export type Database = {
   public: {
     Tables: {
       venues: {
@@ -50,6 +50,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       venue_admins: {
         Row: {
@@ -73,6 +74,7 @@ export interface Database {
           role?: "venue_admin" | "venue_editor";
           created_at?: string;
         };
+        Relationships: [];
       };
       collections: {
         Row: {
@@ -117,6 +119,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       stations: {
         Row: {
@@ -155,6 +158,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       nfc_tags: {
         Row: {
@@ -184,6 +188,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       stamps: {
         Row: {
@@ -222,6 +227,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       participants: {
         Row: {
@@ -251,6 +257,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       collected_stamps: {
         Row: {
@@ -277,6 +284,7 @@ export interface Database {
           collected_at?: string;
           source?: StampSource;
         };
+        Relationships: [];
       };
       badges: {
         Row: {
@@ -306,6 +314,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       participant_badges: {
         Row: {
@@ -326,6 +335,7 @@ export interface Database {
           badge_id?: string;
           unlocked_at?: string;
         };
+        Relationships: [];
       };
       rewards: {
         Row: {
@@ -361,6 +371,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       redemptions: {
         Row: {
@@ -393,7 +404,12 @@ export interface Database {
           redeemed_at?: string | null;
           updated_at?: string;
         };
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
-}
+};

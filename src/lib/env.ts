@@ -51,22 +51,44 @@ export interface EnvReadinessStatus {
   serverEnvIssues: string[];
 }
 
+function readPublicEnvValues(envSource?: Record<string, string | undefined>) {
+  if (envSource) {
+    return {
+      NEXT_PUBLIC_APP_URL: envSource.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      NEXT_PUBLIC_SUPABASE_URL: envSource.NEXT_PUBLIC_SUPABASE_URL,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: envSource.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    };
+  }
+  return {
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  };
+}
+
+export function isSupabasePublicEnvConfigured(
+  envSource?: Record<string, string | undefined>
+): boolean {
+  return publicEnvSchema.safeParse(readPublicEnvValues(envSource)).success;
+}
+
 export function getEnvStatus(
-  envSource: Record<string, string | undefined> = process.env
+  envSource?: Record<string, string | undefined>
 ): EnvReadinessStatus {
-  const publicResult = publicEnvSchema.safeParse({
-    NEXT_PUBLIC_APP_URL: envSource.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-    NEXT_PUBLIC_SUPABASE_URL: envSource.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: envSource.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  });
+  const rawPublic = readPublicEnvValues(envSource);
+  const publicResult = publicEnvSchema.safeParse(rawPublic);
+
+  const rawServiceKey = envSource
+    ? envSource.SUPABASE_SERVICE_ROLE_KEY
+    : process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   const serverResult = serverEnvSchema.safeParse({
-    SUPABASE_SERVICE_ROLE_KEY: envSource.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: rawServiceKey,
   });
 
   const appUrl =
-    envSource.NEXT_PUBLIC_APP_URL && envSource.NEXT_PUBLIC_APP_URL.startsWith("http")
-      ? envSource.NEXT_PUBLIC_APP_URL
+    rawPublic.NEXT_PUBLIC_APP_URL && rawPublic.NEXT_PUBLIC_APP_URL.startsWith("http")
+      ? rawPublic.NEXT_PUBLIC_APP_URL
       : "http://localhost:3000";
 
   return {
@@ -84,23 +106,40 @@ export function getEnvStatus(
 }
 
 export function getPublicEnv(
-  envSource: Record<string, string | undefined> = process.env
+  envSource?: Record<string, string | undefined>
 ): PublicEnv {
-  return publicEnvSchema.parse({
-    NEXT_PUBLIC_APP_URL: envSource.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-    NEXT_PUBLIC_SUPABASE_URL: envSource.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: envSource.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  });
+  return publicEnvSchema.parse(readPublicEnvValues(envSource));
 }
 
 export function getServerEnv(
-  envSource: Record<string, string | undefined> = process.env
+  envSource?: Record<string, string | undefined>
 ): ServerEnv {
+  const rawServiceKey = envSource
+    ? envSource.SUPABASE_SERVICE_ROLE_KEY
+    : process.env.SUPABASE_SERVICE_ROLE_KEY;
   return serverEnvSchema.parse({
-    SUPABASE_SERVICE_ROLE_KEY: envSource.SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_SERVICE_ROLE_KEY: rawServiceKey,
   });
 }
 
 export function validatePublicCode(code: unknown) {
   return publicCodeSchema.safeParse(code);
+}
+
+/**
+ * Validates that `next` is a safe internal relative path (starts with `/` and not `//` or `/\`).
+ * Falls back to `/passport` when missing or unsafe.
+ */
+export function sanitizeNextPath(rawNext: string | null | undefined): string {
+  if (!rawNext) return "/passport";
+  const trimmed = rawNext.trim();
+  if (
+    !trimmed.startsWith("/") ||
+    trimmed.startsWith("//") ||
+    trimmed.startsWith("/\\") ||
+    trimmed.includes("\0")
+  ) {
+    return "/passport";
+  }
+  return trimmed;
 }

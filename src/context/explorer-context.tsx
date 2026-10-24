@@ -6,8 +6,10 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   PILOT_BADGES,
   PILOT_COLLECTIONS,
@@ -15,6 +17,8 @@ import {
   PILOT_STATIONS,
   PILOT_VENUE,
 } from "@/features/pilot/sample-data";
+import { isSupabasePublicEnvConfigured } from "@/lib/env";
+import { createClientSupabaseClient } from "@/lib/supabase/client";
 import type { StampSource, SupportedLocale } from "@/types/database.types";
 import type {
   CollectedStampRecord,
@@ -29,6 +33,14 @@ import type {
 } from "@/types/domain";
 
 const STORAGE_KEY = "taptap_explorer_state_v1";
+const STORAGE_KEY_PREVIEW_AUTH = "taptap_preview_google_user_v1";
+
+export interface AuthenticatedGoogleUser {
+  id: string;
+  email: string | null;
+  name: string;
+  avatarUrl: string | null;
+}
 
 interface StoredExplorerState {
   session: ExplorerParticipantSession;
@@ -63,9 +75,29 @@ function createInitialState(): StoredExplorerState {
   };
 }
 
-interface CollectStampOutcome {
+function mapSupabaseUser(supaUser: User): AuthenticatedGoogleUser {
+  const meta = supaUser.user_metadata ?? {};
+  const fullName: string =
+    (typeof meta.full_name === "string" && meta.full_name.trim()) ||
+    (typeof meta.name === "string" && meta.name.trim()) ||
+    (supaUser.email ? supaUser.email.split("@")[0] ?? "Saigon Explorer" : "Saigon Explorer");
+  const avatarUrl: string | null =
+    (typeof meta.avatar_url === "string" && meta.avatar_url) ||
+    (typeof meta.picture === "string" && meta.picture) ||
+    null;
+
+  return {
+    id: supaUser.id,
+    email: supaUser.email ?? null,
+    name: fullName,
+    avatarUrl,
+  };
+}
+
+export interface CollectStampOutcome {
   ok: boolean;
   alreadyCollected: boolean;
+  newlyCollected: boolean;
   record?: CollectedStampRecord;
   error?: LocalizedText;
 }
@@ -75,8 +107,16 @@ interface ExplorerContextValue {
   locale: SupportedLocale;
   setLocale: (locale: SupportedLocale) => void;
   t: (text: LocalizedText) => string;
+  isSupabaseConfigured: boolean;
+  authLoading: boolean;
+  isAuthenticated: boolean;
+  user: AuthenticatedGoogleUser | null;
+  authError: string | null;
+  signInWithGoogle: (nextPath?: string) => Promise<void>;
+  signOut: () => Promise<void>;
   session: ExplorerParticipantSession;
   updateDisplayName: (name: string) => void;
+  venue: PilotVenue;
   venues: PilotVenue[];
   collections: PilotCollection[];
   stations: PilotStation[];
@@ -84,14 +124,15 @@ interface ExplorerContextValue {
   rewards: PilotReward[];
   collectedStamps: CollectedStampRecord[];
   redemptions: RedemptionRecord[];
-  isStampCollected: (stampId: string) => boolean;
-  getCollectedRecord: (stampId: string) => CollectedStampRecord | undefined;
+  isStampCollected: (stampOrStationId: string) => boolean;
+  isStationCollected: (stationOrStampId: string) => boolean;
+  getCollectedRecord: (stampOrStationId: string) => CollectedStampRecord | undefined;
   collectStamp: (stationId: string, source?: StampSource) => CollectStampOutcome;
   issueRedemption: (rewardId: string) => RedemptionRecord | undefined;
   markRedemptionRedeemed: (redemptionId: string) => void;
   resetDemoProgress: () => void;
+  resetProgress: () => void;
   loadSampleProgress: () => void;
-  // Admin state mutations for Admin UI Foundation
   upsertVenue: (venue: PilotVenue) => void;
   upsertCollection: (collection: PilotCollection) => void;
   upsertStation: (station: PilotStation) => void;
@@ -101,9 +142,121 @@ interface ExplorerContextValue {
 const ExplorerContext = createContext<ExplorerContextValue | null>(null);
 
 export function ExplorerProvider({ children }: { children: React.ReactNode }) {
+  const isSupabaseConfigured = useMemo(() => isSupabasePublicEnvConfigured(), []);
   const [hydrated, setHydrated] = useState(false);
+  const [authLoading, setAuthLoading] = useState<boolean>(isSupabaseConfigured);
+  const [user, setUser] = useState<AuthenticatedGoogleUser | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [state, setState] = useState<StoredExplorerState>(createInitialState);
 
+  const stationsRef = useRef<PilotStation[]>(PILOT_STATIONS);
+  useEffect(() => {
+    stationsRef.current = state.stations;
+  }, [state.stations]);
+
+  const syncParticipantFromSupabase = useCallback(
+    async (supaUser: User) => {
+      if (!isSupabaseConfigured) return;
+      try {
+        const supabase = createClientSupabaseClient();
+        const mappedUser = mapSupabaseUser(supaUser);
+        setUser(mappedUser);
+
+        // 1. Upsert participant row for this Google user
+        const { data: participantRow, error: upsertErr } = await supabase
+          .from("participants")
+          .upsert(
+            {
+              auth_user_id: supaUser.id,
+              display_name: mappedUser.name,
+            },
+            { onConflict: "auth_user_id" }
+          )
+          .select("*")
+          .single();
+
+        if (upsertErr || !participantRow) {
+          setState((prev) => ({
+            ...prev,
+            session: {
+              ...prev.session,
+              participantId: supaUser.id,
+              authUserId: supaUser.id,
+              isAnonymous: false,
+              displayName: mappedUser.name,
+            },
+          }));
+          return;
+        }
+
+        const effectiveName = participantRow.display_name || mappedUser.name;
+        setUser((prev) => (prev ? { ...prev, name: effectiveName } : mappedUser));
+
+        // 2. Load collected_stamps & redemptions from Supabase
+        const [{ data: dbStamps }, { data: dbRedemptions }] = await Promise.all([
+          supabase
+            .from("collected_stamps")
+            .select("*")
+            .eq("participant_id", participantRow.id)
+            .order("collected_at", { ascending: true }),
+          supabase
+            .from("redemptions")
+            .select("*")
+            .eq("participant_id", participantRow.id)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        const mappedStamps: CollectedStampRecord[] = (dbStamps ?? [])
+          .map((row) => {
+            const matchedStation = stationsRef.current.find(
+              (s) => s.stamp.id === row.stamp_id
+            );
+            if (!matchedStation) return null;
+            return {
+              id: row.id,
+              participantId: row.participant_id,
+              stampId: row.stamp_id,
+              stationId: matchedStation.id,
+              publicCode: matchedStation.tag.publicCode,
+              collectedAt: row.collected_at,
+              source: row.source,
+            };
+          })
+          .filter((item): item is CollectedStampRecord => item !== null);
+
+        const mappedRedemptions: RedemptionRecord[] = (dbRedemptions ?? []).map(
+          (row) => ({
+            id: row.id,
+            participantId: row.participant_id,
+            rewardId: row.reward_id,
+            redemptionCode: row.redemption_code,
+            status: row.status,
+            createdAt: row.created_at,
+            redeemedAt: row.redeemed_at,
+          })
+        );
+
+        setState((prev) => ({
+          ...prev,
+          session: {
+            participantId: participantRow.id,
+            authUserId: participantRow.auth_user_id,
+            isAnonymous: false,
+            displayName: effectiveName,
+            locale: participantRow.locale ?? prev.session.locale,
+            createdAt: participantRow.created_at,
+          },
+          collectedStamps: mappedStamps,
+          redemptions: mappedRedemptions,
+        }));
+      } catch {
+        // Keep current client state if network is temporarily unreachable
+      }
+    },
+    [isSupabaseConfigured]
+  );
+
+  // Hydrate local state & preview auth
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -111,12 +264,14 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         const parsed = JSON.parse(raw) as Partial<StoredExplorerState>;
         setState((prev) => ({
           session: parsed.session ?? prev.session,
-          collectedStamps: Array.isArray(parsed.collectedStamps)
-            ? parsed.collectedStamps
-            : prev.collectedStamps,
-          redemptions: Array.isArray(parsed.redemptions)
-            ? parsed.redemptions
-            : prev.redemptions,
+          collectedStamps:
+            !isSupabaseConfigured && Array.isArray(parsed.collectedStamps)
+              ? parsed.collectedStamps
+              : prev.collectedStamps,
+          redemptions:
+            !isSupabaseConfigured && Array.isArray(parsed.redemptions)
+              ? parsed.redemptions
+              : prev.redemptions,
           venues:
             Array.isArray(parsed.venues) && parsed.venues.length > 0
               ? parsed.venues
@@ -135,12 +290,95 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
               : prev.rewards,
         }));
       }
+
+      if (!isSupabaseConfigured) {
+        const rawPreviewUser = window.localStorage.getItem(STORAGE_KEY_PREVIEW_AUTH);
+        if (rawPreviewUser) {
+          const parsedUser = JSON.parse(rawPreviewUser) as AuthenticatedGoogleUser;
+          if (parsedUser && parsedUser.id) {
+            setUser(parsedUser);
+            setState((prev) => ({
+              ...prev,
+              session: {
+                ...prev.session,
+                authUserId: parsedUser.id,
+                isAnonymous: false,
+                displayName: parsedUser.name,
+              },
+            }));
+          }
+        }
+      }
     } catch {
       // Ignore storage read errors in restricted private browsing modes
     } finally {
       setHydrated(true);
     }
-  }, []);
+  }, [isSupabaseConfigured]);
+
+  // Subscribe to Supabase Auth when configured
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setAuthLoading(false);
+      return;
+    }
+
+    let mounted = true;
+    const supabase = createClientSupabaseClient();
+
+    supabase.auth
+      .getUser()
+      .then(async ({ data }) => {
+        if (!mounted) return;
+        if (data.user) {
+          await syncParticipantFromSupabase(data.user);
+        } else {
+          setUser(null);
+          setState((prev) => ({
+            ...prev,
+            session: {
+              ...prev.session,
+              authUserId: null,
+              isAnonymous: true,
+            },
+          }));
+        }
+      })
+      .catch(() => {
+        // Ignore transient network errors
+      })
+      .finally(() => {
+        if (mounted) {
+          setAuthLoading(false);
+        }
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+      if (nextSession?.user) {
+        void syncParticipantFromSupabase(nextSession.user);
+      } else {
+        setUser(null);
+        setState((prev) => ({
+          ...prev,
+          collectedStamps: [],
+          redemptions: [],
+          session: {
+            ...prev.session,
+            authUserId: null,
+            isAnonymous: true,
+          },
+        }));
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [isSupabaseConfigured, syncParticipantFromSupabase]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -151,17 +389,109 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, state]);
 
-  const locale = state.session.locale;
+  const signInWithGoogle = useCallback(
+    async (nextPath?: string) => {
+      setAuthError(null);
+      const targetNext =
+        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : typeof window !== "undefined"
+            ? `${window.location.pathname}${window.location.search}`
+            : "/passport";
 
-  const setLocale = useCallback((nextLocale: SupportedLocale) => {
+      if (isSupabaseConfigured) {
+        const supabase = createClientSupabaseClient();
+        const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+          targetNext
+        )}`;
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo,
+            queryParams: {
+              access_type: "offline",
+              prompt: "select_account",
+            },
+          },
+        });
+        if (error) {
+          setAuthError(error.message);
+        }
+        return;
+      }
+
+      // Local preview fallback when NEXT_PUBLIC_SUPABASE_URL is not configured yet
+      const previewUser: AuthenticatedGoogleUser = {
+        id: "preview-google-user-01",
+        email: "explorer@gmail.com",
+        name: "Saigon Explorer",
+        avatarUrl: null,
+      };
+      setUser(previewUser);
+      setState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          authUserId: previewUser.id,
+          isAnonymous: false,
+          displayName: previewUser.name,
+        },
+      }));
+      try {
+        window.localStorage.setItem(
+          STORAGE_KEY_PREVIEW_AUTH,
+          JSON.stringify(previewUser)
+        );
+      } catch {
+        // Ignore storage errors
+      }
+    },
+    [isSupabaseConfigured]
+  );
+
+  const signOut = useCallback(async () => {
+    setAuthError(null);
+    if (isSupabaseConfigured) {
+      const supabase = createClientSupabaseClient();
+      await supabase.auth.signOut();
+    } else {
+      try {
+        window.localStorage.removeItem(STORAGE_KEY_PREVIEW_AUTH);
+      } catch {
+        // Ignore storage errors
+      }
+    }
+    setUser(null);
     setState((prev) => ({
-      ...prev,
+      ...createInitialState(),
       session: {
-        ...prev.session,
-        locale: nextLocale,
+        ...createDefaultSession(),
+        locale: prev.session.locale,
       },
     }));
-  }, []);
+  }, [isSupabaseConfigured]);
+
+  const locale = state.session.locale;
+
+  const setLocale = useCallback(
+    (nextLocale: SupportedLocale) => {
+      setState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          locale: nextLocale,
+        },
+      }));
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void supabase
+          .from("participants")
+          .update({ locale: nextLocale })
+          .eq("id", state.session.participantId);
+      }
+    },
+    [isSupabaseConfigured, user, state.session.isAnonymous, state.session.participantId]
+  );
 
   const t = useCallback(
     (text: LocalizedText) => {
@@ -170,28 +500,45 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     [locale]
   );
 
-  const updateDisplayName = useCallback((name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    setState((prev) => ({
-      ...prev,
-      session: {
-        ...prev.session,
-        displayName: trimmed,
-      },
-    }));
-  }, []);
+  const updateDisplayName = useCallback(
+    (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      setState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          displayName: trimmed,
+        },
+      }));
+      setUser((prev) => (prev ? { ...prev, name: trimmed } : null));
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void supabase
+          .from("participants")
+          .update({ display_name: trimmed })
+          .eq("id", state.session.participantId);
+      }
+    },
+    [isSupabaseConfigured, user, state.session.isAnonymous, state.session.participantId]
+  );
 
   const isStampCollected = useCallback(
-    (stampId: string) => {
-      return state.collectedStamps.some((item) => item.stampId === stampId);
+    (stampOrStationId: string) => {
+      return state.collectedStamps.some(
+        (item) =>
+          item.stampId === stampOrStationId || item.stationId === stampOrStationId
+      );
     },
     [state.collectedStamps]
   );
 
   const getCollectedRecord = useCallback(
-    (stampId: string) => {
-      return state.collectedStamps.find((item) => item.stampId === stampId);
+    (stampOrStationId: string) => {
+      return state.collectedStamps.find(
+        (item) =>
+          item.stampId === stampOrStationId || item.stationId === stampOrStationId
+      );
     },
     [state.collectedStamps]
   );
@@ -203,6 +550,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         return {
           ok: false,
           alreadyCollected: false,
+          newlyCollected: false,
           error: {
             en: "Station not found.",
             vi: "Không tìm thấy trạm.",
@@ -214,6 +562,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         return {
           ok: false,
           alreadyCollected: false,
+          newlyCollected: false,
           error: {
             en: "This checkpoint is currently unavailable for stamp collection.",
             vi: "Trạm này hiện đang tạm ngưng nhận dấu mộc.",
@@ -222,12 +571,13 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       }
 
       const existing = state.collectedStamps.find(
-        (c) => c.stampId === station.stamp.id
+        (c) => c.stampId === station.stamp.id || c.stationId === station.id
       );
       if (existing) {
         return {
           ok: true,
           alreadyCollected: true,
+          newlyCollected: false,
           record: existing,
         };
       }
@@ -242,18 +592,54 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         source,
       };
 
+      const nextCount = state.collectedStamps.length + 1;
       setState((prev) => ({
         ...prev,
         collectedStamps: [...prev.collectedStamps, newRecord],
       }));
 
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void (async () => {
+          await supabase.from("collected_stamps").upsert(
+            {
+              participant_id: state.session.participantId,
+              stamp_id: station.stamp.id,
+              nfc_tag_id: station.tag.id,
+              source,
+            },
+            { onConflict: "participant_id,stamp_id" }
+          );
+
+          const requiredCount = PILOT_COLLECTIONS[0]?.requiredStamps ?? 4;
+          const badge = PILOT_BADGES[0];
+          if (nextCount >= requiredCount && badge) {
+            await supabase.from("participant_badges").upsert(
+              {
+                participant_id: state.session.participantId,
+                badge_id: badge.id,
+              },
+              { onConflict: "participant_id,badge_id" }
+            );
+          }
+        })();
+      }
+
       return {
         ok: true,
         alreadyCollected: false,
+        newlyCollected: true,
         record: newRecord,
       };
     },
-    [state.collectedStamps, state.session.participantId, state.stations]
+    [
+      state.collectedStamps,
+      state.session.participantId,
+      state.session.isAnonymous,
+      state.stations,
+      isSupabaseConfigured,
+      user,
+    ]
   );
 
   const issueRedemption = useCallback(
@@ -264,7 +650,6 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       const existing = state.redemptions.find((r) => r.rewardId === rewardId);
       if (existing) return existing;
 
-      // Verify eligibility against collected stamps in the reward's collection
       const collectionStationStampIds = new Set(
         state.stations
           .filter((s) => s.collectionId === reward.collectionId)
@@ -294,6 +679,43 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         redemptions: [...prev.redemptions, created],
       }));
 
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void supabase
+          .from("redemptions")
+          .upsert(
+            {
+              participant_id: state.session.participantId,
+              reward_id: reward.id,
+              redemption_code: created.redemptionCode,
+              status: "issued",
+            },
+            { onConflict: "participant_id,reward_id" }
+          )
+          .select("*")
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              setState((prev) => ({
+                ...prev,
+                redemptions: prev.redemptions.map((item) =>
+                  item.rewardId === reward.id
+                    ? {
+                        id: data.id,
+                        participantId: data.participant_id,
+                        rewardId: data.reward_id,
+                        redemptionCode: data.redemption_code,
+                        status: data.status,
+                        createdAt: data.created_at,
+                        redeemedAt: data.redeemed_at,
+                      }
+                    : item
+                ),
+              }));
+            }
+          });
+      }
+
       return created;
     },
     [
@@ -301,34 +723,67 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       state.redemptions,
       state.rewards,
       state.session.participantId,
+      state.session.isAnonymous,
       state.stations,
+      isSupabaseConfigured,
+      user,
     ]
   );
 
-  const markRedemptionRedeemed = useCallback((redemptionId: string) => {
-    setState((prev) => ({
-      ...prev,
-      redemptions: prev.redemptions.map((item) =>
-        item.id === redemptionId
-          ? {
-              ...item,
-              status: "redeemed",
-              redeemedAt: new Date().toISOString(),
-            }
-          : item
-      ),
-    }));
-  }, []);
+  const markRedemptionRedeemed = useCallback(
+    (redemptionId: string) => {
+      const nowIso = new Date().toISOString();
+      setState((prev) => ({
+        ...prev,
+        redemptions: prev.redemptions.map((item) =>
+          item.id === redemptionId
+            ? {
+                ...item,
+                status: "redeemed",
+                redeemedAt: nowIso,
+              }
+            : item
+        ),
+      }));
+
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void supabase
+          .from("redemptions")
+          .update({ status: "redeemed", redeemed_at: nowIso })
+          .eq("id", redemptionId)
+          .eq("participant_id", state.session.participantId);
+      }
+    },
+    [isSupabaseConfigured, user, state.session.isAnonymous, state.session.participantId]
+  );
 
   const resetDemoProgress = useCallback(() => {
     setState((prev) => ({
       ...createInitialState(),
       session: {
-        ...createDefaultSession(),
-        locale: prev.session.locale,
+        ...prev.session,
       },
     }));
-  }, []);
+
+    if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+      const supabase = createClientSupabaseClient();
+      void Promise.all([
+        supabase
+          .from("collected_stamps")
+          .delete()
+          .eq("participant_id", state.session.participantId),
+        supabase
+          .from("participant_badges")
+          .delete()
+          .eq("participant_id", state.session.participantId),
+        supabase
+          .from("redemptions")
+          .delete()
+          .eq("participant_id", state.session.participantId),
+      ]);
+    }
+  }, [isSupabaseConfigured, user, state.session.isAnonymous, state.session.participantId]);
 
   const loadSampleProgress = useCallback(() => {
     const firstTwo = PILOT_STATIONS.slice(0, 2);
@@ -346,7 +801,25 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       collectedStamps: sampleRecords,
       redemptions: [],
     }));
-  }, [state.session.participantId]);
+
+    if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+      const supabase = createClientSupabaseClient();
+      void supabase.from("collected_stamps").upsert(
+        firstTwo.map((st) => ({
+          participant_id: state.session.participantId,
+          stamp_id: st.stamp.id,
+          nfc_tag_id: st.tag.id,
+          source: "nfc" as const,
+        })),
+        { onConflict: "participant_id,stamp_id" }
+      );
+    }
+  }, [
+    state.session.participantId,
+    state.session.isAnonymous,
+    isSupabaseConfigured,
+    user,
+  ]);
 
   const upsertVenue = useCallback((venue: PilotVenue) => {
     setState((prev) => {
@@ -396,14 +869,24 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const isAuthenticated = Boolean(user);
+
   const value = useMemo<ExplorerContextValue>(
     () => ({
       hydrated,
       locale,
       setLocale,
       t,
+      isSupabaseConfigured,
+      authLoading,
+      isAuthenticated,
+      user,
+      authError,
+      signInWithGoogle,
+      signOut,
       session: state.session,
       updateDisplayName,
+      venue: state.venues[0] ?? PILOT_VENUE,
       venues: state.venues,
       collections: state.collections,
       stations: state.stations,
@@ -412,11 +895,13 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       collectedStamps: state.collectedStamps,
       redemptions: state.redemptions,
       isStampCollected,
+      isStationCollected: isStampCollected,
       getCollectedRecord,
       collectStamp,
       issueRedemption,
       markRedemptionRedeemed,
       resetDemoProgress,
+      resetProgress: resetDemoProgress,
       loadSampleProgress,
       upsertVenue,
       upsertCollection,
@@ -424,29 +909,36 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       upsertReward,
     }),
     [
-      collectStamp,
-      getCollectedRecord,
       hydrated,
-      isStampCollected,
-      issueRedemption,
-      loadSampleProgress,
       locale,
+      setLocale,
+      t,
+      isSupabaseConfigured,
+      authLoading,
+      isAuthenticated,
+      user,
+      authError,
+      signInWithGoogle,
+      signOut,
+      state.session,
+      updateDisplayName,
+      state.venues,
+      state.collections,
+      state.stations,
+      state.rewards,
+      state.collectedStamps,
+      state.redemptions,
+      isStampCollected,
+      getCollectedRecord,
+      collectStamp,
+      issueRedemption,
       markRedemptionRedeemed,
       resetDemoProgress,
-      setLocale,
-      state.collectedStamps,
-      state.collections,
-      state.redemptions,
-      state.rewards,
-      state.session,
-      state.stations,
-      state.venues,
-      t,
-      updateDisplayName,
-      upsertCollection,
-      upsertReward,
-      upsertStation,
+      loadSampleProgress,
       upsertVenue,
+      upsertCollection,
+      upsertStation,
+      upsertReward,
     ]
   );
 

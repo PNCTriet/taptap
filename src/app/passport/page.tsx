@@ -2,142 +2,169 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, Award, Lock, ShieldCheck } from "lucide-react";
+import { Award, CheckCircle2, Gift, Lock } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import { StampCard } from "@/components/stamp-card";
+import { GoogleSignInButton } from "@/components/google-sign-in-button";
 
 export default function PassportPage() {
   const {
     locale,
     t,
+    isAuthenticated,
+    user,
     session,
     collections,
     stations,
     badges,
     rewards,
     collectedStamps,
-    isStampCollected,
+    redemptions,
+    isStationCollected,
     getCollectedRecord,
   } = useExplorer();
 
   const collection = collections[0];
+  const badge = badges[0];
+  const reward = rewards[0];
+
+  const totalStamps = stations.length;
   const collectedCount = collectedStamps.length;
-  const requiredCount = collection?.requiredStamps ?? stations.length;
-  const isCompleted = collectedCount >= requiredCount && requiredCount > 0;
   const progressPercent =
-    requiredCount > 0
-      ? Math.min(100, Math.round((collectedCount / requiredCount) * 100))
-      : 0;
+    totalStamps > 0 ? Math.round((collectedCount / totalStamps) * 100) : 0;
+  const isCompleted = collectedCount >= (collection?.requiredStamps ?? 4);
+  const existingRedemption = reward
+    ? redemptions.find((r) => r.rewardId === reward.id)
+    : undefined;
 
   return (
     <div className="space-y-6">
-      {/* Compact Passport Header */}
-      <section className="paper-card p-5 sm:p-6 space-y-4">
-        <div className="flex items-baseline justify-between gap-2">
+      {/* Minimal Header */}
+      <div className="paper-card p-5 space-y-4">
+        <div className="flex items-center justify-between gap-2">
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-wider text-[#176B61]">
+            <h1 className="font-display-serif text-2xl font-extrabold text-[#272E2B]">
               {locale === "vi" ? "Hộ chiếu" : "Passport"}
-            </p>
-            <h1 className="font-display-serif text-2xl sm:text-3xl font-extrabold text-[#272E2B]">
-              {session.displayName}
             </h1>
+            <p className="text-xs font-semibold text-[#525D58]">
+              {isAuthenticated && user?.email
+                ? `${session.displayName} • ${user.email}`
+                : session.displayName}
+            </p>
           </div>
-          <span className="font-mono text-sm font-extrabold text-[#176B61]">
-            {collectedCount} / {requiredCount}{" "}
-            {locale === "vi" ? "con dấu" : "stamps"}
+          <span className="rounded-full bg-[#E6F3F1] px-3.5 py-1.5 text-xs font-extrabold text-[#176B61]">
+            {collectedCount} / {totalStamps} {locale === "vi" ? "con dấu" : "stamps"}
           </span>
         </div>
 
-        <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#F5EFE2]">
+        <div
+          className="h-2.5 w-full overflow-hidden rounded-full bg-[#EDE6D6]"
+          role="progressbar"
+          aria-valuenow={progressPercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
           <div
             className="h-full rounded-full bg-[#176B61] transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-      </section>
 
-      {/* Stamp Grid */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {!isAuthenticated && (
+          <div className="pt-1">
+            <GoogleSignInButton
+              nextPath="/passport"
+              labelEn="Continue with Google to sync passport"
+              labelVi="Đăng nhập Gmail để lưu hộ chiếu"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* 2-Column Visual Stamp Grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {stations.map((station) => {
-          const collected = isStampCollected(station.stamp.id);
-          const record = getCollectedRecord(station.stamp.id);
+          const collected = isStationCollected(station.id);
+          const record = getCollectedRecord(station.id);
           return (
             <StampCard
               key={station.id}
               station={station}
-              state={collected ? "collected" : "locked"}
+              state={collected ? "collected" : "available"}
               collectedAt={record?.collectedAt}
             />
           );
         })}
-      </section>
+      </div>
 
-      {/* Compact Badges & Rewards */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {badges.map((badge) => (
-          <div
-            key={badge.id}
-            className="paper-card p-4 flex items-center justify-between gap-3"
-          >
+      {/* Badges & Rewards Section (2 Compact Cards) */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {badge && (
+          <div className="paper-card p-4 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div
-                className={`h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ${
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
                   isCompleted
                     ? "bg-[#176B61] text-[#F2C653]"
-                    : "bg-[#F5EFE2] text-[#78847E]"
+                    : "bg-[#EDE6D6] text-[#525D58]"
                 }`}
               >
-                {isCompleted ? (
-                  <ShieldCheck className="h-5 w-5" />
-                ) : (
-                  <Lock className="h-4 w-4" />
-                )}
+                <Award className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="font-display-serif text-base font-extrabold text-[#272E2B]">
+                <p className="font-display-serif text-base font-extrabold text-[#272E2B]">
                   {t(badge.name)}
-                </h2>
-                <p className="text-xs font-semibold text-[#525D58]">
+                </p>
+                <p className="text-xs font-bold text-[#525D58]">
                   {isCompleted
                     ? locale === "vi"
                       ? "Đã mở khóa"
                       : "Unlocked"
-                    : locale === "vi"
-                    ? "Đang khóa"
-                    : "Locked"}
+                    : `${collectedCount}/${totalStamps}`}
                 </p>
               </div>
             </div>
+            {isCompleted ? (
+              <CheckCircle2 className="h-5 w-5 text-[#1F7A4C] shrink-0" />
+            ) : (
+              <Lock className="h-4 w-4 text-[#525D58] shrink-0" />
+            )}
           </div>
-        ))}
+        )}
 
-        {rewards.map((reward) => (
+        {reward && (
           <Link
-            key={reward.id}
             href={`/rewards/${reward.id}`}
             className="paper-card p-4 flex items-center justify-between gap-3 hover:border-[#176B61] transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="h-11 w-11 rounded-xl bg-[#FDF6DF] border border-[#F2C653] flex items-center justify-center shrink-0">
-                <Award className="h-5 w-5 text-[#8F6505]" />
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
+                  isCompleted
+                    ? "bg-[#E86F52] text-white"
+                    : "bg-[#EDE6D6] text-[#525D58]"
+                }`}
+              >
+                <Gift className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="font-display-serif text-base font-extrabold text-[#272E2B]">
+                <p className="font-display-serif text-base font-extrabold text-[#272E2B]">
                   {t(reward.name)}
-                </h2>
-                <p className="text-xs font-extrabold text-[#176B61]">
-                  {isCompleted
-                    ? locale === "vi"
-                      ? "Nhận quà"
-                      : "Claim"
-                    : `${collectedCount} / ${reward.requiredStamps}`}
+                </p>
+                <p className="text-xs font-bold text-[#176B61]">
+                  {existingRedemption
+                    ? existingRedemption.redemptionCode
+                    : isCompleted
+                      ? locale === "vi"
+                        ? "Nhận thưởng →"
+                        : "Claim reward →"
+                      : `${collectedCount}/${reward.requiredStamps}`}
                 </p>
               </div>
             </div>
-            <ArrowRight className="h-4 w-4 text-[#176B61] shrink-0" />
           </Link>
-        ))}
-      </section>
+        )}
+      </div>
     </div>
   );
 }

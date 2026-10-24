@@ -1,4 +1,5 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database.types";
 import { getPublicEnv } from "@/lib/env";
@@ -13,11 +14,11 @@ export interface CookieToSet {
  * Server-side Supabase client (Server Components, Server Actions, Route Handlers).
  * Respects Row Level Security (RLS) via the request's cookie session.
  */
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient(): Promise<SupabaseClient<Database>> {
   const cookieStore = await cookies();
   const env = getPublicEnv();
 
-  return createServerClient<Database>(
+  return createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
@@ -36,5 +37,5 @@ export async function createSupabaseServerClient() {
         },
       },
     }
-  );
+  ) as unknown as SupabaseClient<Database>;
 }
