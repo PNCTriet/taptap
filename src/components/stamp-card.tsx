@@ -53,7 +53,7 @@ export function StampCard({
           ? "bg-white border-2 border-[#F2C653] shadow-md"
           : isLocked
           ? "bg-[#F5EFE2]/70 border border-dashed border-[#CFC4AB]"
-          : "bg-white border border-[#E6DECB] hover:border-[#176B61]/50 shadow-xs"
+          : "bg-white border border-[#E6DECB] shadow-xs"
       } ${animatePress ? "animate-stamp-press" : ""}`}
     >
       <div className="rounded-[14px] border border-dashed border-[#CFC4AB] bg-[#FFFDF8] p-2">
@@ -69,7 +69,7 @@ export function StampCard({
               src={station.stamp.imageUrl}
               alt={t(station.name)}
               onError={() => setImageError(true)}
-              className={`h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] ${
+              className={`h-full w-full object-cover transition-transform duration-300 ${
                 isLocked ? "grayscale opacity-55" : ""
               }`}
             />
@@ -81,11 +81,20 @@ export function StampCard({
           {isCollected && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute bottom-2 right-2 rotate-[-8deg] rounded-full border-2 border-[#176B61] bg-[#FFF8EB]/95 px-2.5 py-1 shadow-xs"
+              className="pointer-events-none absolute bottom-2.5 right-2.5 flex items-center justify-center"
             >
-              <span className="font-mono text-[10px] font-extrabold uppercase tracking-wider text-[#176B61]">
-                STAMPED
-              </span>
+              {animatePress && (
+                <span className="absolute inset-0 rounded-full border-2 border-[#176B61] animate-ink-ring" />
+              )}
+              <div
+                className={`rotate-[-8deg] rounded-full border-2 border-[#176B61] bg-[#FFF8EB]/95 px-3 py-1 shadow-sm ${
+                  animatePress ? "animate-postmark" : ""
+                }`}
+              >
+                <span className="font-mono text-[10px] font-extrabold uppercase tracking-wider text-[#176B61]">
+                  STAMPED
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -108,7 +117,7 @@ export function StampCard({
             </span>
           ) : (
             <span className="shrink-0 font-mono text-xs font-bold text-[#176B61]">
-              #{station.stamp.sortOrder}
+              NFC #{station.stamp.sortOrder}
             </span>
           )}
         </div>
@@ -116,7 +125,9 @@ export function StampCard({
     </div>
   );
 
-  if (showTapLink) {
+  // Only link to /s/[code] when already collected so browsing uncollected cards
+  // in the catalog never accidentally triggers NFC auto-collection.
+  if (showTapLink && isCollected) {
     return (
       <Link href={`/s/${station.tag.publicCode}`} className="block">
         {content}

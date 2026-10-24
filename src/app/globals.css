@@ -94,19 +94,62 @@ body {
 
 @keyframes stampPress {
   0% {
-    transform: scale(1.22) rotate(-6deg);
-    opacity: 0.2;
+    transform: scale(1.04);
   }
-  65% {
-    transform: scale(0.96) rotate(-2deg);
+  45% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes postmarkSlam {
+  0% {
+    transform: scale(2.35) rotate(-18deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(0.9) rotate(-8deg);
+    opacity: 1;
+  }
+  78% {
+    transform: scale(1.05) rotate(-8deg);
     opacity: 1;
   }
   100% {
-    transform: scale(1) rotate(-2deg);
+    transform: scale(1) rotate(-8deg);
     opacity: 1;
   }
 }
 
+@keyframes inkRingPulse {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.85);
+    opacity: 0;
+  }
+}
+
 .animate-stamp-press {
-  animation: stampPress 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: stampPress 0.48s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-postmark {
+  animation: postmarkSlam 0.52s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-ink-ring {
+  animation: inkRingPulse 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-stamp-press,
+  .animate-postmark,
+  .animate-ink-ring {
+    animation: none !important;
+  }
 }

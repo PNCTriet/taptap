@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -43,11 +43,18 @@ export default function AdminStationsPage() {
   const { locale, t, venues, collections, stations, upsertStation } =
     useExplorer();
   const [search, setSearch] = useState("");
+  const [baseOrigin, setBaseOrigin] = useState("https://taptap-five.vercel.app");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [editing, setEditing] = useState<PilotStation | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmDisableStation, setConfirmDisableStation] =
     useState<PilotStation | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.origin) {
+      setBaseOrigin(window.location.origin);
+    }
+  }, []);
 
   const form = useForm<StationFormValues>({
     resolver: zodResolver(stationFormSchema),
@@ -67,9 +74,9 @@ export default function AdminStationsPage() {
 
   const handleCopyUrl = (publicCode: string) => {
     const origin =
-      typeof window !== "undefined"
+      typeof window !== "undefined" && window.location.origin
         ? window.location.origin
-        : "http://localhost:3000";
+        : baseOrigin;
     const fullUrl = `${origin}/s/${publicCode}`;
     navigator.clipboard?.writeText(fullUrl);
     setCopiedCode(publicCode);
@@ -84,7 +91,7 @@ export default function AdminStationsPage() {
       nameVi: "",
       slug: "",
       publicCode: `tcv-${randomSuffix}`,
-      locationHintEn: "Saigon Zoo Checkpoint",
+      locationHintEn: "Saigon Zoo",
       descriptionEn: "",
       imageUrl:
         "https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=900&q=80",
@@ -113,7 +120,10 @@ export default function AdminStationsPage() {
   const onSubmit = (values: StationFormValues) => {
     const nextStation: PilotStation = {
       id: editing?.id ?? `station-${Date.now()}`,
-      venueId: editing?.venueId ?? venues[0]?.id ?? "11111111-1111-4111-8111-111111111101",
+      venueId:
+        editing?.venueId ??
+        venues[0]?.id ??
+        "11111111-1111-4111-8111-111111111101",
       collectionId:
         editing?.collectionId ??
         collections[0]?.id ??
@@ -125,8 +135,8 @@ export default function AdminStationsPage() {
         vi: editing?.description.vi ?? values.descriptionEn,
       },
       funFact: editing?.funFact ?? {
-        en: "Discover the wildlife and botanical heritage of Saigon Zoo.",
-        vi: "Khám phá di sản động thực vật tại Thảo Cầm Viên Sài Gòn.",
+        en: "Saigon Zoo heritage station.",
+        vi: "Trạm di sản Thảo Cầm Viên.",
       },
       locationHint: {
         en: values.locationHintEn,
@@ -137,18 +147,18 @@ export default function AdminStationsPage() {
       tag: {
         id: editing?.tag.id ?? `tag-${Date.now()}`,
         publicCode: values.publicCode,
-        label: `${values.nameEn} — NFC Tag`,
+        label: `${values.nameEn} — NFC`,
         status: values.tagStatus,
       },
       stamp: editing?.stamp ?? {
         id: `stamp-${Date.now()}`,
         name: {
-          en: `${values.nameEn} Stamp`,
-          vi: `Tem Mộc ${values.nameVi}`,
+          en: values.nameEn,
+          vi: values.nameVi,
         },
         description: {
-          en: `Commemorative stamp at ${values.nameEn}.`,
-          vi: `Dấu mộc kỷ niệm tại ${values.nameVi}.`,
+          en: values.descriptionEn,
+          vi: values.descriptionEn,
         },
         imageUrl: values.imageUrl,
         sortOrder: stations.length + 1,
@@ -169,16 +179,7 @@ export default function AdminStationsPage() {
 
   return (
     <AdminShell
-      title={
-        locale === "vi"
-          ? "Quản Lý Trạm Dừng & Thẻ NFC/QR"
-          : "Stations & NFC/QR Tag Management"
-      }
-      subtitle={
-        locale === "vi"
-          ? "Sao chép đường dẫn NFC cố định (/s/[code]) và tải mã QR SVG cho từng trạm."
-          : "Copy stable NFC URLs (/s/[code]), manage tag status, and download SVG QR plaques."
-      }
+      title={locale === "vi" ? "Trạm & Thẻ NFC" : "Stations & NFC URLs"}
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="relative flex-1 max-w-md">
@@ -198,118 +199,118 @@ export default function AdminStationsPage() {
           className="min-h-[42px] inline-flex items-center gap-2 rounded-full bg-[#176B61] hover:bg-[#12564E] text-white px-5 py-2 text-xs font-extrabold cursor-pointer"
         >
           <Plus className="h-4 w-4" />
-          <span>{locale === "vi" ? "Thêm trạm mới" : "New Station"}</span>
+          <span>{locale === "vi" ? "Thêm trạm" : "New Station"}</span>
         </button>
       </div>
 
       <div className="space-y-4">
-        {filtered.map((st) => (
-          <div
-            key={st.id}
-            className="paper-card p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-center"
-          >
-            {/* Station Info */}
-            <div className="lg:col-span-8 space-y-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase ${
-                    st.status === "active"
-                      ? "bg-[#E7F6F0] text-[#1B7F5C]"
-                      : st.status === "maintenance"
-                      ? "bg-[#FDF6DF] text-[#8F6505]"
-                      : "bg-[#FDEAEA] text-[#C93B3B]"
-                  }`}
-                >
-                  Station: {st.status}
-                </span>
+        {filtered.map((st) => {
+          const fullNfcUrl = `${baseOrigin}/s/${st.tag.publicCode}`;
+          return (
+            <div
+              key={st.id}
+              className="paper-card p-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-center"
+            >
+              {/* Station Info */}
+              <div className="lg:col-span-8 space-y-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase ${
+                      st.status === "active"
+                        ? "bg-[#E7F6F0] text-[#1B7F5C]"
+                        : st.status === "maintenance"
+                        ? "bg-[#FDF6DF] text-[#8F6505]"
+                        : "bg-[#FDEAEA] text-[#C93B3B]"
+                    }`}
+                  >
+                    {st.status}
+                  </span>
 
-                <span
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase ${
-                    st.tag.status === "active"
-                      ? "bg-[#E6F3F1] text-[#176B61]"
-                      : "bg-[#FDEAEA] text-[#C93B3B]"
-                  }`}
-                >
-                  NFC Tag: {st.tag.status}
-                </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase ${
+                      st.tag.status === "active"
+                        ? "bg-[#E6F3F1] text-[#176B61]"
+                        : "bg-[#FDEAEA] text-[#C93B3B]"
+                    }`}
+                  >
+                    NFC: {st.tag.status}
+                  </span>
 
-                <span className="font-mono text-xs text-[#78847E]">
-                  #{String(st.stamp.sortOrder).padStart(2, "0")}
-                </span>
-              </div>
+                  <span className="font-mono text-xs text-[#78847E]">
+                    #{st.stamp.sortOrder}
+                  </span>
+                </div>
 
-              <h2 className="font-display-serif text-xl font-extrabold text-[#272E2B]">
-                {t(st.name)}
-              </h2>
-              <p className="text-xs text-[#525D58]">{t(st.description)}</p>
-              <p className="text-xs font-semibold text-[#176B61]">
-                {t(st.locationHint)}
-              </p>
+                <h2 className="font-display-serif text-xl font-extrabold text-[#272E2B]">
+                  {t(st.name)}
+                </h2>
+                <p className="text-xs text-[#525D58]">{t(st.description)}</p>
 
-              {/* Copyable NFC URL */}
-              <div className="pt-2 flex flex-wrap items-center gap-2">
-                <code className="rounded-xl bg-[#F5EFE2] border border-[#E6DECB] px-3 py-1.5 font-mono text-xs font-bold text-[#272E2B]">
-                  /s/{st.tag.publicCode}
-                </code>
+                {/* Copyable Full NFC URL */}
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  <code className="rounded-xl bg-[#F5EFE2] border border-[#E6DECB] px-3 py-1.5 font-mono text-xs font-bold text-[#272E2B] break-all">
+                    {fullNfcUrl}
+                  </code>
 
-                <button
-                  type="button"
-                  onClick={() => handleCopyUrl(st.tag.publicCode)}
-                  className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full bg-[#E6F3F1] hover:bg-[#176B61] text-[#176B61] hover:text-white px-3.5 py-1.5 text-xs font-extrabold transition-colors cursor-pointer"
-                >
-                  {copiedCode === st.tag.publicCode ? (
-                    <>
-                      <Check className="h-3.5 w-3.5" />
-                      <span>Copied NFC URL</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="h-3.5 w-3.5" />
-                      <span>Copy NFC URL</span>
-                    </>
-                  )}
-                </button>
-
-                <Link
-                  href={`/s/${st.tag.publicCode}`}
-                  className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full border border-[#E6DECB] bg-white hover:bg-[#F5EFE2] px-3.5 py-1.5 text-xs font-bold text-[#272E2B]"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Open Station Page</span>
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => openEdit(st)}
-                  className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full border border-[#E6DECB] bg-white hover:bg-[#F5EFE2] px-3.5 py-1.5 text-xs font-bold text-[#272E2B] cursor-pointer"
-                >
-                  <Edit3 className="h-3.5 w-3.5" />
-                  <span>Edit</span>
-                </button>
-
-                {st.tag.status === "active" && (
                   <button
                     type="button"
-                    onClick={() => setConfirmDisableStation(st)}
-                    className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full border border-[#C93B3B]/30 bg-[#FDEAEA] hover:bg-[#C93B3B] text-[#C93B3B] hover:text-white px-3.5 py-1.5 text-xs font-extrabold transition-colors cursor-pointer"
+                    onClick={() => handleCopyUrl(st.tag.publicCode)}
+                    className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full bg-[#176B61] hover:bg-[#12564E] text-white px-4 py-1.5 text-xs font-extrabold transition-colors cursor-pointer"
                   >
-                    <span>Disable Tag</span>
+                    {copiedCode === st.tag.publicCode ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-[#F2C653]" />
+                        <span>Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5 text-[#F2C653]" />
+                        <span>Copy NFC URL</span>
+                      </>
+                    )}
                   </button>
-                )}
+
+                  <Link
+                    href={`/s/${st.tag.publicCode}`}
+                    className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full border border-[#E6DECB] bg-white hover:bg-[#F5EFE2] px-3.5 py-1.5 text-xs font-bold text-[#272E2B]"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>Test NFC Tap</span>
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => openEdit(st)}
+                    className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full border border-[#E6DECB] bg-white hover:bg-[#F5EFE2] px-3.5 py-1.5 text-xs font-bold text-[#272E2B] cursor-pointer"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    <span>Edit</span>
+                  </button>
+
+                  {st.tag.status === "active" && (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDisableStation(st)}
+                      className="min-h-[36px] inline-flex items-center gap-1.5 rounded-full border border-[#C93B3B]/30 bg-[#FDEAEA] hover:bg-[#C93B3B] text-[#C93B3B] hover:text-white px-3.5 py-1.5 text-xs font-extrabold transition-colors cursor-pointer"
+                    >
+                      <span>Disable</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* SVG QR Code Preview & Download */}
+              <div className="lg:col-span-4 flex justify-start lg:justify-end">
+                <QrCodeSvg
+                  value={fullNfcUrl}
+                  label={t(st.name)}
+                  code={st.tag.publicCode}
+                  size={128}
+                />
               </div>
             </div>
-
-            {/* SVG QR Code Preview & Download */}
-            <div className="lg:col-span-4 flex justify-start lg:justify-end">
-              <QrCodeSvg
-                value={`http://localhost:3000/s/${st.tag.publicCode}`}
-                label={t(st.name)}
-                code={st.tag.publicCode}
-                size={128}
-              />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Confirmation Dialog for Disabling an NFC Tag */}
@@ -323,9 +324,8 @@ export default function AdminStationsPage() {
                   Disable NFC Tag {confirmDisableStation.tag.publicCode}?
                 </h3>
                 <p className="text-xs text-[#525D58] mt-1">
-                  Visitors tapping `/s/{confirmDisableStation.tag.publicCode}` will
-                  see a retired/disabled tag notice and will not be able to collect a
-                  stamp from this tag until re-enabled.
+                  Visitors tapping `/s/{confirmDisableStation.tag.publicCode}`
+                  will see an inactive tag notice.
                 </p>
               </div>
             </div>

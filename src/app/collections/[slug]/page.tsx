@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, Award } from "lucide-react";
+import { ArrowLeft, ArrowRight, Award, BookOpen } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import { StampCard } from "@/components/stamp-card";
 
@@ -38,14 +38,11 @@ export default function CollectionDetailPage() {
     isStampCollected(s.stamp.id)
   ).length;
   const required = collection.requiredStamps;
+  const isCompleted = collectedInCollection >= required && required > 0;
   const percent =
     required > 0
       ? Math.min(100, Math.round((collectedInCollection / required) * 100))
       : 0;
-
-  const nextStation =
-    collectionStations.find((s) => !isStampCollected(s.stamp.id)) ??
-    collectionStations[0];
 
   const collectionReward = rewards.find(
     (r) => r.collectionId === collection.id
@@ -103,16 +100,22 @@ export default function CollectionDetailPage() {
               </div>
             </div>
 
-            {nextStation && (
+            {isCompleted && collectionReward ? (
               <Link
-                href={`/s/${nextStation.tag.publicCode}`}
+                href={`/rewards/${collectionReward.id}`}
+                className="min-h-[46px] inline-flex items-center justify-center gap-2 rounded-full bg-[#F07861] hover:bg-[#DE634C] text-white px-6 py-2.5 text-sm font-extrabold transition-colors"
+              >
+                <Award className="h-4 w-4" />
+                <span>{locale === "vi" ? "Nhận quà" : "Claim reward"}</span>
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            ) : (
+              <Link
+                href="/passport"
                 className="min-h-[46px] inline-flex items-center justify-center gap-2 rounded-full bg-[#176B61] hover:bg-[#12564E] text-white px-6 py-2.5 text-sm font-extrabold transition-colors"
               >
-                <span>
-                  {locale === "vi"
-                    ? `Mở trạm: ${t(nextStation.name)}`
-                    : `Open: ${t(nextStation.name)}`}
-                </span>
+                <BookOpen className="h-4 w-4 text-[#F2C653]" />
+                <span>{locale === "vi" ? "Mở hộ chiếu" : "View passport"}</span>
                 <ArrowRight className="h-4 w-4" />
               </Link>
             )}

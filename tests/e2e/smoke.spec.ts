@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("TAPTAP Minimalist Explorer Smoke Suite", () => {
-  test("renders Discover (/), Collection (/collections/zoo-explorer), Station (/s/tcv-k9x2m4p8), Passport (/passport), and Health (/health)", async ({
+  test("renders Discover (/), auto-collects on NFC Station (/s/tcv-k9x2m4p8), and renders Health (/health)", async ({
     page,
   }) => {
     // 1. Discover Page
@@ -9,11 +9,10 @@ test.describe("TAPTAP Minimalist Explorer Smoke Suite", () => {
     await expect(page.getByText("TAPTAP").first()).toBeVisible();
     await expect(page.getByRole("heading", { name: "Zoo Explorer" })).toBeVisible();
 
-    // 2. Station Page — verify it does NOT auto-collect on load
+    // 2. NFC Station Page — auto-collects on visit with stamp animation
     await page.goto("/s/tcv-k9x2m4p8");
     await expect(page.getByRole("heading", { name: "Asian Elephant" })).toBeVisible();
-    const collectButton = page.getByRole("button", { name: /Collect stamp/i });
-    await expect(collectButton).toBeVisible();
+    await expect(page.getByText("STAMPED")).toBeVisible();
 
     // 3. Health Page
     await page.goto("/health");

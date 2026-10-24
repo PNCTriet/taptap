@@ -4,7 +4,7 @@
 
 1. **Zero-Friction Mobile Web First:** Visitors interact with physical checkpoints by tapping an NDEF-formatted NFC tag or scanning a fallback QR code. Both resolve to a standard HTTPS URL (`https://<APP_DOMAIN>/s/<PUBLIC_CODE>`) handled natively by iOS Safari and Android Chrome—without requiring a native app download or the browser Web NFC API (which is unavailable on iOS Safari).
 2. **Strict Separation of Stations and NFC Hardware (`stations` vs `nfc_tags`):** Physical NFC stickers or plaques in outdoor venues like Saigon Zoo can be damaged by weather, lost, or vandalized. By separating `stations` (the logical checkpoint and content) from `nfc_tags` (the physical token with `public_code`), operators can mark a compromised tag as `lost` or `replaced` and provision a new tag for the same station without losing historical stamp analytics or breaking collection progress.
-3. **Explicit User Intent on Stamp Collection:** Opening `/s/[code]` displays the station photo, story, and collection context, and requires an explicit **"Collect stamp"** tap. TAPTAP never auto-mutates state on `GET` page load, preventing accidental prefetches (e.g., iOS link previews or messaging app crawlers) from consuming or spoofing a stamp tap.
+3. **Instant Tactile NFC Auto-Collection:** Visiting an active `/s/[code]` URL from a physical NFC tap or QR scan automatically collects the station's stamp on client hydration (guarded idempotently per session) and plays a tactile ink-postmark landing animation—without requiring an extra button click. Meanwhile, browsing uncollected cards in the web catalog (`/`, `/collections/[slug]`, `/passport`) does not link to `/s/[code]`, preventing accidental collection while browsing.
 4. **Future Native iOS (Swift / SwiftUI) Readiness:** Domain logic, Zod schemas, and station resolution services live in `src/server/*` and `src/types/*`, cleanly decoupled from React UI components. Future SwiftUI clients can consume the same Supabase schema, RLS policies, and `/api/*` endpoints.
 
 ---
@@ -22,10 +22,11 @@
        │      (Queries Supabase when configured, or deterministic Pilot Seed in preview mode)
        ├─► 3. Renders Station Sheet (`available` | `collected` | `disabled` | `invalid`)
        │
-       ▼ (Visitor taps "Collect stamp")
-[Participant Session & Stamp Recording]
+       ▼ (Client hydration on active `/s/[code]`)
+[Auto-Collect & Tactile Postmark Animation]
        ├─► Ensures anonymous or authenticated participant session exists
        ├─► Records `(participant_id, stamp_id, nfc_tag_id, source)` idempotently
+       ├─► Plays ink-postmark slam + ink-ring pulse animation onto the stamp card
        └─► Evaluates `collections.completion_criteria` -> unlocks Badge & Reward eligibility
 ```
 
