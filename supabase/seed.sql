@@ -42,6 +42,11 @@ on conflict (id) do update set
   completion_criteria = excluded.completion_criteria,
   status = excluded.status;
 
+-- Avoid unique slug/sort_order collisions when updating from earlier seed ordering
+update public.stations set slug = 'temp-' || id::text where venue_id = '11111111-1111-4111-8111-111111111101';
+delete from public.nfc_tags where public_code = 'tcv-disabled99' and id <> '44444444-4444-4444-8444-444444444499';
+update public.stamps set sort_order = sort_order + 100 where collection_id = '22222222-2222-4222-8222-222222222201';
+
 -- 3. Pilot Stations (4 Checkpoints)
 insert into public.stations (id, venue_id, name, slug, description, image_url, location_hint, status)
 values

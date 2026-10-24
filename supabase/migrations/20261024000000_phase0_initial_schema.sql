@@ -248,7 +248,7 @@ as $$
   );
 $$;
 
-create or replace function public.is_venue_admin(check_venue_id uuid)
+create or replace function public.is_venue_admin(target_venue_id uuid)
 returns boolean
 language sql
 stable
@@ -259,7 +259,7 @@ as $$
   or exists (
     select 1
     from public.venue_admins va
-    where va.venue_id = check_venue_id
+    where va.venue_id = target_venue_id
       and va.user_id = (select auth.uid())
   );
 $$;
