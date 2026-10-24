@@ -10,16 +10,16 @@ export const PILOT_VENUE: PilotVenue = {
   id: "11111111-1111-4111-8111-111111111101",
   slug: "saigon-zoo",
   name: {
-    en: "Saigon Zoo and Botanical Gardens",
-    vi: "Thảo Cầm Viên Sài Gòn",
+    en: "Saigon Zoo",
+    vi: "Thảo Cầm Viên",
   },
   description: {
-    en: "Development seed/demo dataset inspired by the historic botanical gardens and wildlife sanctuary in District 1, Ho Chi Minh City.",
-    vi: "Dữ liệu mẫu phát triển lấy cảm hứng từ khu bảo tồn động thực vật lịch sử tại Quận 1, TP. Hồ Chí Minh.",
+    en: "Historic botanical gardens and wildlife sanctuary in Saigon.",
+    vi: "Vườn thú và thực vật lịch sử giữa lòng Sài Gòn.",
   },
   locationLabel: {
-    en: "2 Nguyen Binh Khiem, District 1, Ho Chi Minh City",
-    vi: "2 Nguyễn Bỉnh Khiêm, Quận 1, TP. Hồ Chí Minh",
+    en: "District 1, Ho Chi Minh City",
+    vi: "Quận 1, TP. Hồ Chí Minh",
   },
   coverImageUrl:
     "https://images.unsplash.com/photo-1534567153574-2b12153a87f0?auto=format&fit=crop&w=1200&q=80",
@@ -34,15 +34,15 @@ export const PILOT_COLLECTIONS: PilotCollection[] = [
     slug: "zoo-explorer",
     name: {
       en: "Zoo Explorer",
-      vi: "Hành Trình Khám Phá Thảo Cầm Viên",
+      vi: "Zoo Explorer",
     },
     subtitle: {
-      en: "4 NFC Checkpoints • Shaded Heritage Trail",
-      vi: "4 Trạm NFC • Tuyến Đường Di Sản Rợp Bóng Cây",
+      en: "4 checkpoints • Saigon Zoo",
+      vi: "4 trạm dừng • Thảo Cầm Viên",
     },
     description: {
-      en: "Follow the shaded botanical paths to visit the Elephant sanctuary, the Giraffe lookout, the Flamingo lagoon, and the Botanical Conservatory. Tap each NFC plaque or scan its QR code to press a commemorative ink stamp into your explorer passport.",
-      vi: "Dạo bước dưới những tán cây cổ thụ để ghé thăm Khu Voi Châu Á, Đài Quan Sát Hươu Cao Cổ, Hồ Hồng Hạc và Nhà Kính Thực Vật. Chạm thẻ NFC hoặc quét mã QR tại mỗi trạm để đóng dấu mộc vào hộ chiếu khám phá của bạn.",
+      en: "Collect all 4 wildlife stamps across the shaded heritage trail.",
+      vi: "Sưu tầm đủ 4 con dấu trên hành trình khám phá.",
     },
     coverImageUrl:
       "https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=1200&q=80",
@@ -63,16 +63,16 @@ export const PILOT_STATIONS: PilotStation[] = [
       vi: "Voi Châu Á",
     },
     description: {
-      en: "Meet the gentle Asian elephants beneath the century-old canopy and discover how keepers enrich their daily habitat.",
-      vi: "Gặp gỡ những chú voi châu Á hiền hòa dưới tán cây cổ thụ và tìm hiểu công tác bảo tồn sinh cảnh tự nhiên mỗi ngày.",
+      en: "Gentle Asian elephants beneath the century-old forest canopy.",
+      vi: "Những chú voi châu Á hiền hòa dưới tán rừng cổ thụ.",
     },
     funFact: {
-      en: "Asian elephants use low-frequency rumbles and trunk touches to greet herd companions across shaded forest clearings.",
-      vi: "Voi châu Á giao tiếp bằng âm trầm tần số thấp và cử chỉ vòi tinh tế để chào hỏi đồng loại trong rừng.",
+      en: "Elephants greet each other with low rumbles and trunk touches.",
+      vi: "Voi chào nhau bằng âm trầm và cái chạm vòi nhẹ nhàng.",
     },
     locationHint: {
-      en: "East Heritage Path — Asian Elephant Sanctuary Plaque",
-      vi: "Lối Di Sản Phía Đông — Bảng Đồng Khu Voi Châu Á",
+      en: "East Heritage Path",
+      vi: "Lối Di Sản Phía Đông",
     },
     imageUrl:
       "https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=900&q=80",
@@ -80,18 +80,18 @@ export const PILOT_STATIONS: PilotStation[] = [
     tag: {
       id: "44444444-4444-4444-8444-444444444401",
       publicCode: "tcv-k9x2m4p8",
-      label: "Elephant Sanctuary — Brass Plaque NFC #1",
+      label: "Elephant — NFC #1",
       status: "active",
     },
     stamp: {
       id: "55555555-5555-4555-8555-555555555501",
       name: {
-        en: "Elephant Sanctuary Stamp",
-        vi: "Tem Mộc Voi Châu Á",
+        en: "Elephant",
+        vi: "Voi Châu Á",
       },
       description: {
-        en: "Postmarked at the East Heritage Path Elephant Sanctuary.",
-        vi: "Đóng dấu tại Khu Bảo Tồn Voi Châu Á.",
+        en: "East Heritage Path",
+        vi: "Lối Di Sản Phía Đông",
       },
       imageUrl:
         "https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=900&q=80",
@@ -110,16 +110,16 @@ export const PILOT_STATIONS: PilotStation[] = [
       vi: "Hươu Cao Cổ",
     },
     description: {
-      en: "Step onto the elevated timber deck to watch reticulated giraffes browse high among the acacia canopies at eye level.",
-      vi: "Bước lên sàn gỗ trên cao để ngắm nhìn những chú hươu cao cổ thong thả thưởng thức lá non ngang tầm mắt.",
+      en: "Watch giraffes browse high among the acacia treetops.",
+      vi: "Ngắm hươu cao cổ thong thả dưới tán cây keo.",
     },
     funFact: {
-      en: "Each giraffe's coat pattern is as unique as a human fingerprint, helping calves recognize their mothers from afar.",
-      vi: "Hoa văn trên bộ lông của mỗi chú hươu cao cổ là độc nhất như vân tay, giúp hươu non nhận ra mẹ từ xa.",
+      en: "Every giraffe coat pattern is unique like a fingerprint.",
+      vi: "Hoa văn mỗi chú hươu cao cổ là độc nhất.",
     },
     locationHint: {
-      en: "North Savanna Lawn — Elevated Timber Deck Rail",
-      vi: "Thảm Cỏ Phía Bắc — Lan Can Đài Quan Sát Gỗ",
+      en: "North Savanna Deck",
+      vi: "Đài Quan Sát Phía Bắc",
     },
     imageUrl:
       "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80",
@@ -127,18 +127,18 @@ export const PILOT_STATIONS: PilotStation[] = [
     tag: {
       id: "44444444-4444-4444-8444-444444444402",
       publicCode: "tcv-q7w3n5r2",
-      label: "Giraffe Lookout — Timber Rail NFC #1",
+      label: "Giraffe — NFC #2",
       status: "active",
     },
     stamp: {
       id: "55555555-5555-4555-8555-555555555502",
       name: {
-        en: "Giraffe Lookout Stamp",
-        vi: "Tem Mộc Hươu Cao Cổ",
+        en: "Giraffe",
+        vi: "Hươu Cao Cổ",
       },
       description: {
-        en: "Postmarked at the North Savanna Elevated Deck.",
-        vi: "Đóng dấu tại Đài Quan Sát Hươu Cao Cổ.",
+        en: "North Savanna Deck",
+        vi: "Đài Quan Sát Phía Bắc",
       },
       imageUrl:
         "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80",
@@ -157,16 +157,16 @@ export const PILOT_STATIONS: PilotStation[] = [
       vi: "Hồng Hạc",
     },
     description: {
-      en: "Pause by the sunlit lotus lagoon where vibrant coral-pink flamingos gather along the shallow reflections.",
-      vi: "Dừng chân bên hồ sen ngập nắng, nơi đàn hồng hạc rực rỡ soi bóng bên mặt nước phẳng lặng.",
+      en: "Coral-pink flamingos gathered along the sunlit lotus lagoon.",
+      vi: "Đàn hồng hạc rực rỡ bên hồ sen ngập nắng.",
     },
     funFact: {
-      en: "Flamingos get their coral plumage from carotenoid pigments in the aquatic organisms they filter-feed on.",
-      vi: "Màu hồng cam rực rỡ của hồng hạc được hình thành từ sắc tố tự nhiên carotenoid trong nguồn thức ăn thủy sinh.",
+      en: "Their coral feathers come from natural aquatic pigments.",
+      vi: "Sắc lông hồng cam đến từ sắc tố tự nhiên.",
     },
     locationHint: {
-      en: "Central Waterfowl Lagoon — West Viewing Bridge",
-      vi: "Hồ Thủy Cầm Trung Tâm — Cầu Ngắm Cảnh Phía Tây",
+      en: "Central Lagoon",
+      vi: "Hồ Trung Tâm",
     },
     imageUrl:
       "https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80",
@@ -174,18 +174,18 @@ export const PILOT_STATIONS: PilotStation[] = [
     tag: {
       id: "44444444-4444-4444-8444-444444444403",
       publicCode: "tcv-h4j8v6b1",
-      label: "Flamingo Lagoon — Viewing Bridge NFC #1",
+      label: "Flamingo — NFC #3",
       status: "active",
     },
     stamp: {
       id: "55555555-5555-4555-8555-555555555503",
       name: {
-        en: "Flamingo Lagoon Stamp",
-        vi: "Tem Mộc Hồ Hồng Hạc",
+        en: "Flamingo",
+        vi: "Hồng Hạc",
       },
       description: {
-        en: "Postmarked at the Central Waterfowl Lagoon Bridge.",
-        vi: "Đóng dấu tại Cầu Hồ Hồng Hạc Trung Tâm.",
+        en: "Central Lagoon",
+        vi: "Hồ Trung Tâm",
       },
       imageUrl:
         "https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80",
@@ -204,16 +204,16 @@ export const PILOT_STATIONS: PilotStation[] = [
       vi: "Nhà Kính Thực Vật",
     },
     description: {
-      en: "Wander among rare Indochinese orchids, heritage bonsai, and tropical ferns inside the historic botanical glasshouse.",
-      vi: "Khám phá bộ sưu tập phong lan Đông Dương quý hiếm, bonsai cổ thụ và dương xỉ nhiệt đới trong nhà kính thực vật.",
+      en: "Rare orchids and heritage bonsai inside the glasshouse.",
+      vi: "Phong lan quý và bonsai cổ thụ trong nhà kính.",
     },
     funFact: {
-      en: "Founded in 1864, the garden preserves over 1,800 trees across 260 botanical species right in the heart of Saigon.",
-      vi: "Thành lập từ năm 1864, khu vườn bảo tồn hơn 1.800 cây gỗ thuộc 260 loài thực vật quý giữa lòng Sài Gòn.",
+      en: "Home to over 260 rare tropical plant species since 1864.",
+      vi: "Bảo tồn hơn 260 loài thực vật quý từ năm 1864.",
     },
     locationHint: {
-      en: "Botanical Quarter — Glasshouse Archway Entrance",
-      vi: "Khu Thực Vật — Cổng Vòm Nhà Kính",
+      en: "Botanical Glasshouse",
+      vi: "Khu Nhà Kính",
     },
     imageUrl:
       "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80",
@@ -221,18 +221,18 @@ export const PILOT_STATIONS: PilotStation[] = [
     tag: {
       id: "44444444-4444-4444-8444-444444444404",
       publicCode: "tcv-z2c9f3t7",
-      label: "Botanical Conservatory — Archway NFC #1",
+      label: "Conservatory — NFC #4",
       status: "active",
     },
     stamp: {
       id: "55555555-5555-4555-8555-555555555504",
       name: {
-        en: "Botanical Orchid Stamp",
-        vi: "Tem Mộc Nhà Kính Thực Vật",
+        en: "Conservatory",
+        vi: "Nhà Kính",
       },
       description: {
-        en: "Postmarked at the Glasshouse Botanical Conservatory.",
-        vi: "Đóng dấu tại Nhà Kính Thực Vật Thảo Cầm Viên.",
+        en: "Botanical Glasshouse",
+        vi: "Khu Nhà Kính",
       },
       imageUrl:
         "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80",
@@ -249,7 +249,7 @@ export const DISABLED_DEMO_TAG_CODES: Record<
 > = {
   "tcv-disabled99": {
     stationSlug: "elephant",
-    label: "Elephant Sanctuary — Retired Test Tag",
+    label: "Elephant — Retired Tag",
     status: "disabled",
   },
 };
@@ -259,12 +259,12 @@ export const PILOT_BADGES: PilotBadge[] = [
     id: "66666666-6666-4666-8666-666666666601",
     collectionId: "22222222-2222-4222-8222-222222222201",
     name: {
-      en: "Saigon Zoo Explorer Crest",
-      vi: "Huy Hiệu Nhà Thám Hiểm Thảo Cầm Viên",
+      en: "Zoo Explorer Crest",
+      vi: "Huy Hiệu Zoo Explorer",
     },
     description: {
-      en: "Awarded to explorers who collect all 4 wildlife & botanical stamps along the Zoo Explorer trail.",
-      vi: "Trao tặng nhà thám hiểm đã sưu tầm trọn bộ 4 con dấu động thực vật trên tuyến Zoo Explorer.",
+      en: "Collected all 4 Zoo Explorer stamps.",
+      vi: "Hoàn thành đủ 4 con dấu Zoo Explorer.",
     },
     imageUrl: "/badges/zoo-explorer-crest.svg",
   },
@@ -275,18 +275,18 @@ export const PILOT_REWARDS: PilotReward[] = [
     id: "77777777-7777-4777-8777-777777777701",
     collectionId: "22222222-2222-4222-8222-222222222201",
     name: {
-      en: "Explorer Botanical Postcard & Sticker Set",
-      vi: "Bộ Bưu Thiếp & Nhãn Dán Zoo Explorer",
+      en: "Botanical Postcard & Sticker Set",
+      vi: "Bộ Bưu Thiếp & Sticker",
     },
     description: {
-      en: "Receive an illustrated botanical postcard & weatherproof wildlife sticker sheet when you complete the Zoo Explorer passport.",
-      vi: "Nhận bộ bưu thiếp minh họa thực vật và bộ sticker động vật chống nước khi hoàn thành hộ chiếu Zoo Explorer.",
+      en: "Illustrated postcard and sticker set for completing your passport.",
+      vi: "Quà tặng bưu thiếp và sticker khi hoàn thành hộ chiếu.",
     },
     imageUrl:
       "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=900&q=80",
     redemptionInstructions: {
-      en: "Show your issued redemption code to the attendant at the Main Gate Visitor Kiosk between 08:30 and 17:00.",
-      vi: "Xuất trình mã đổi thưởng tại Quầy Thông Tin Cổng Chính từ 08:30 đến 17:00 để nhận quà.",
+      en: "Show your code at the Main Gate Kiosk (08:30–17:00).",
+      vi: "Xuất trình mã tại Quầy Cổng Chính (08:30–17:00).",
     },
     requiredStamps: 4,
     status: "active",

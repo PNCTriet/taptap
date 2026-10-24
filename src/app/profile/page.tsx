@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  CheckCircle2,
-  Globe,
-  RotateCcw,
-  Shield,
-  Sparkles,
-  UserCheck,
-} from "lucide-react";
+import { Check, RotateCcw, Sparkles } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 
 export default function ProfilePage() {
@@ -18,195 +11,117 @@ export default function ProfilePage() {
     session,
     updateDisplayName,
     collectedStamps,
-    redemptions,
     resetDemoProgress,
     loadSampleProgress,
   } = useExplorer();
 
   const [nameInput, setNameInput] = useState(session.displayName);
-  const [savedBanner, setSavedBanner] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     updateDisplayName(nameInput);
-    setSavedBanner(true);
-    window.setTimeout(() => setSavedBanner(false), 2500);
+    setSaved(true);
+    window.setTimeout(() => setSaved(false), 1800);
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="font-display-serif text-3xl font-extrabold text-[#272E2B]">
-          {locale === "vi" ? "Hồ Sơ Nhà Thám Hiểm" : "Explorer Profile & Preferences"}
-        </h1>
-        <p className="text-sm text-[#525D58] mt-1">
-          {locale === "vi"
-            ? "Quản lý ngôn ngữ hiển thị, phiên hộ chiếu ẩn danh và công cụ kiểm thử dữ liệu mẫu."
-            : "Manage your display language, anonymous passport session, and pilot demo utilities."}
-        </p>
-      </div>
+    <div className="mx-auto max-w-md space-y-5">
+      <h1 className="font-display-serif text-2xl font-extrabold text-[#272E2B]">
+        {locale === "vi" ? "Hồ sơ" : "Profile"}
+      </h1>
 
-      {/* Session Identity Card */}
-      <section className="paper-card p-6 space-y-5">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-2xl bg-[#176B61] text-white flex items-center justify-center">
-              <UserCheck className="h-6 w-6 text-[#F2C653]" />
-            </div>
-            <div>
-              <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F3F1] px-2.5 py-0.5 text-[11px] font-extrabold text-[#176B61]">
-                {session.isAnonymous
-                  ? locale === "vi"
-                    ? "Phiên Khách Ẩn Danh (Guest Session)"
-                    : "Anonymous Guest Session"
-                  : locale === "vi"
-                  ? "Tài Khoản Đã Liên Kết"
-                  : "Linked Account"}
-              </span>
-              <h2 className="font-display-serif text-xl font-extrabold text-[#272E2B] mt-1">
-                {session.displayName}
-              </h2>
-              <p className="font-mono text-xs text-[#78847E]">
-                ID: {session.participantId}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <form onSubmit={handleSaveProfile} className="space-y-3 pt-3 border-t border-[#E6DECB]">
+      {/* Clean iOS-Style Grouped List */}
+      <div className="paper-card divide-y divide-[#E6DECB] overflow-hidden">
+        {/* Display Name */}
+        <form onSubmit={handleSave} className="p-4 space-y-2">
           <label
             htmlFor="display-name-input"
-            className="block text-xs font-extrabold uppercase tracking-wider text-[#525D58]"
+            className="block text-xs font-extrabold text-[#525D58]"
           >
-            {locale === "vi" ? "Tên hiển thị trên Hộ chiếu" : "Passport Display Name"}
+            {locale === "vi" ? "Tên hiển thị" : "Name"}
           </label>
-          <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="flex items-center gap-2">
             <input
               id="display-name-input"
               type="text"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
-              className="min-h-[44px] flex-1 rounded-xl border border-[#CFC4AB] bg-[#FFFDF8] px-3.5 py-2 text-sm font-semibold text-[#272E2B] focus:border-[#176B61] focus:outline-none"
-              placeholder="Saigon Explorer"
+              className="min-h-[40px] flex-1 rounded-xl border border-[#CFC4AB] bg-[#FFFDF8] px-3 py-1.5 text-sm font-semibold text-[#272E2B] focus:border-[#176B61] focus:outline-none"
             />
             <button
               type="submit"
-              className="min-h-[44px] rounded-full bg-[#176B61] hover:bg-[#12564E] text-white px-5 py-2 text-xs font-extrabold transition-colors cursor-pointer"
+              className="min-h-[40px] rounded-full bg-[#176B61] text-white px-4 py-1.5 text-xs font-extrabold cursor-pointer inline-flex items-center gap-1"
             >
-              {locale === "vi" ? "Lưu tên" : "Save Name"}
+              {saved ? <Check className="h-3.5 w-3.5" /> : null}
+              <span>{locale === "vi" ? "Lưu" : "Save"}</span>
             </button>
           </div>
-          {savedBanner && (
-            <p className="inline-flex items-center gap-1.5 text-xs font-bold text-[#1B7F5C]">
-              <CheckCircle2 className="h-4 w-4" />
-              {locale === "vi"
-                ? "Đã cập nhật tên hiển thị!"
-                : "Passport display name updated!"}
-            </p>
-          )}
         </form>
-      </section>
 
-      {/* Bilingual Language Preference Card */}
-      <section className="paper-card p-6 space-y-4">
-        <div className="flex items-center gap-2.5">
-          <Globe className="h-5 w-5 text-[#176B61]" />
-          <h2 className="font-display-serif text-lg font-extrabold text-[#272E2B]">
-            {locale === "vi" ? "Ngôn Ngữ Giao Diện (EN / VI)" : "Language Preference (EN / VI)"}
-          </h2>
+        {/* Language Row */}
+        <div className="p-4 flex items-center justify-between">
+          <span className="text-sm font-bold text-[#272E2B]">
+            {locale === "vi" ? "Ngôn ngữ" : "Language"}
+          </span>
+          <div className="inline-flex rounded-full border border-[#E6DECB] bg-[#F5EFE2] p-0.5">
+            <button
+              type="button"
+              onClick={() => setLocale("en")}
+              className={`rounded-full px-3 py-1 text-xs font-extrabold cursor-pointer ${
+                locale === "en" ? "bg-[#176B61] text-white" : "text-[#525D58]"
+              }`}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              onClick={() => setLocale("vi")}
+              className={`rounded-full px-3 py-1 text-xs font-extrabold cursor-pointer ${
+                locale === "vi" ? "bg-[#176B61] text-white" : "text-[#525D58]"
+              }`}
+            >
+              VI
+            </button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setLocale("en")}
-            className={`min-h-[52px] rounded-2xl border p-3.5 text-left transition-all cursor-pointer ${
-              locale === "en"
-                ? "border-2 border-[#176B61] bg-[#E6F3F1]/60"
-                : "border-[#E6DECB] bg-white hover:bg-[#F5EFE2]"
-            }`}
-          >
-            <p className="text-sm font-extrabold text-[#272E2B]">English (Default)</p>
-            <p className="text-xs text-[#525D58]">
-              International visitor passport interface
-            </p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setLocale("vi")}
-            className={`min-h-[52px] rounded-2xl border p-3.5 text-left transition-all cursor-pointer ${
-              locale === "vi"
-                ? "border-2 border-[#176B61] bg-[#E6F3F1]/60"
-                : "border-[#E6DECB] bg-white hover:bg-[#F5EFE2]"
-            }`}
-          >
-            <p className="text-sm font-extrabold text-[#272E2B]">Tiếng Việt</p>
-            <p className="text-xs text-[#525D58]">
-              Giao diện song ngữ cho khách tham quan Việt Nam
-            </p>
-          </button>
+        {/* Session Status (1 line) */}
+        <div className="p-4 flex items-center justify-between text-xs">
+          <span className="font-bold text-[#525D58]">
+            {locale === "vi" ? "Trạng thái" : "Session"}
+          </span>
+          <span className="font-mono font-semibold text-[#272E2B]">
+            {session.isAnonymous
+              ? locale === "vi"
+                ? "Khách ẩn danh"
+                : "Guest"
+              : "Linked"}{" "}
+            • {collectedStamps.length} {locale === "vi" ? "tem" : "stamps"}
+          </span>
         </div>
-      </section>
 
-      {/* Anonymous Participation & Security Architecture Note */}
-      <section className="paper-card p-6 space-y-3">
-        <div className="flex items-center gap-2.5">
-          <Shield className="h-5 w-5 text-[#4D73CF]" />
-          <h2 className="font-display-serif text-lg font-extrabold text-[#272E2B]">
-            {locale === "vi"
-              ? "Cơ Chế Lưu Trữ Hộ Chiếu Ẩn Danh"
-              : "Frictionless Anonymous Participation"}
-          </h2>
-        </div>
-        <p className="text-xs text-[#525D58] leading-relaxed">
-          {locale === "vi"
-            ? "Bạn có thể chạm thẻ NFC và sưu tầm con dấu ngay lập tức mà không cần đăng ký tài khoản. Khi kết nối Supabase Production, phiên ẩn danh (Supabase Anonymous Sign-In) có thể liên kết với email bất kỳ lúc nào mà vẫn giữ nguyên toàn bộ con dấu đã thu thập."
-            : "TAPTAP lets visitors collect stamps on their first NFC tap without a registration wall. In production, Supabase Anonymous Auth sessions can be upgraded to a permanent email/OAuth identity at any time while preserving your participant_id and collected_stamps."}
-        </p>
-      </section>
-
-      {/* Demo Progress Testing Controls */}
-      <section className="paper-card p-6 space-y-4">
-        <h2 className="font-display-serif text-lg font-extrabold text-[#272E2B]">
-          {locale === "vi"
-            ? "Công Cụ Kiểm Thử Tiến Độ (Demo Controls)"
-            : "Pilot Demo Testing Controls"}
-        </h2>
-        <p className="text-xs text-[#525D58]">
-          {locale === "vi"
-            ? `Hiện đang có ${collectedStamps.length} con dấu và ${redemptions.length} mã đổi thưởng trong phiên trình duyệt này.`
-            : `Currently holding ${collectedStamps.length} collected stamp(s) and ${redemptions.length} redemption voucher(s) in this session.`}
-        </p>
-
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Actions */}
+        <div className="p-4 flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={loadSampleProgress}
-            className="min-h-[44px] inline-flex items-center gap-2 rounded-full bg-[#E6F3F1] hover:bg-[#176B61] text-[#176B61] hover:text-white px-4 py-2 text-xs font-extrabold transition-colors cursor-pointer"
+            className="min-h-[40px] flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#E6F3F1] text-[#176B61] px-3 py-2 text-xs font-extrabold cursor-pointer"
           >
-            <Sparkles className="h-4 w-4" />
-            <span>
-              {locale === "vi"
-                ? "Nạp thử 2/4 con dấu mẫu"
-                : "Load Sample Progress (2/4 Stamps)"}
-            </span>
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>{locale === "vi" ? "Nạp mẫu (2/4)" : "Sample (2/4)"}</span>
           </button>
 
           <button
             type="button"
             onClick={resetDemoProgress}
-            className="min-h-[44px] inline-flex items-center gap-2 rounded-full border border-[#C93B3B]/40 bg-[#FDEAEA] hover:bg-[#C93B3B] text-[#C93B3B] hover:text-white px-4 py-2 text-xs font-extrabold transition-colors cursor-pointer"
+            className="min-h-[40px] flex-1 inline-flex items-center justify-center gap-1.5 rounded-full bg-[#FDEAEA] text-[#C93B3B] px-3 py-2 text-xs font-extrabold cursor-pointer"
           >
-            <RotateCcw className="h-4 w-4" />
-            <span>
-              {locale === "vi"
-                ? "Đặt lại toàn bộ dữ liệu thử nghiệm"
-                : "Reset Demo Progress"}
-            </span>
+            <RotateCcw className="h-3.5 w-3.5" />
+            <span>{locale === "vi" ? "Đặt lại" : "Reset progress"}</span>
           </button>
         </div>
-      </section>
+      </div>
     </div>
   );
 }

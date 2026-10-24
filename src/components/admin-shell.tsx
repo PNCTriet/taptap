@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   Award,
   Building2,
-  Database,
   FolderKanban,
   LayoutDashboard,
   MapPin,
@@ -25,7 +24,7 @@ const ADMIN_LINKS = [
   },
   {
     href: "/admin/stations",
-    labelEn: "Stations & NFC",
+    labelEn: "Stations",
     labelVi: "Trạm & NFC",
     icon: MapPin,
   },
@@ -44,7 +43,7 @@ export function AdminShell({
   children,
 }: {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -52,61 +51,43 @@ export function AdminShell({
 
   return (
     <div className="space-y-6">
-      {/* Honest Data Persistence Banner */}
-      <div className="rounded-2xl border border-[#4D73CF]/30 bg-[#EAF0FB] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="h-9 w-9 rounded-xl bg-[#4D73CF] text-white flex items-center justify-center shrink-0">
-            <Database className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-wider text-[#365EC2]">
-              {locale === "vi"
-                ? "Chế độ Dữ liệu Admin: Phiên Bản Thử Nghiệm (Seed Mode)"
-                : "Admin Persistence Mode: Phase 0 / UI Seed Preview"}
-            </p>
-            <p className="text-xs text-[#272E2B] mt-0.5">
-              {locale === "vi"
-                ? "Thay đổi trong bảng điều khiển được lưu vào phiên trình duyệt cục bộ để kiểm thử tức thì và sẵn sàng kết nối RLS Supabase."
-                : "Changes created or edited here persist in your active browser session for instant testing and map 1:1 to the Supabase PostgreSQL schema."}
-            </p>
-          </div>
+      {/* Compact Admin Sub-Navigation */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6DECB] pb-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          {ADMIN_LINKS.map((item) => {
+            const Icon = item.icon;
+            const active = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-colors ${
+                  active
+                    ? "bg-[#176B61] text-white"
+                    : "bg-white border border-[#E6DECB] text-[#525D58] hover:text-[#272E2B]"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{locale === "vi" ? item.labelVi : item.labelEn}</span>
+              </Link>
+            );
+          })}
         </div>
+
         <Link
           href="/health"
-          className="shrink-0 inline-flex items-center justify-center rounded-full bg-white border border-[#4D73CF]/40 px-3.5 py-1.5 text-xs font-bold text-[#365EC2] hover:bg-[#4D73CF] hover:text-white transition-colors"
+          className="rounded-full bg-[#EAF0FB] px-3 py-1 text-[11px] font-bold text-[#3256AE] hover:underline"
         >
-          {locale === "vi" ? "Kiểm tra kết nối" : "Check Supabase Env"}
+          Health
         </Link>
       </div>
 
-      {/* Admin Sub-Navigation */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#E6DECB] pb-4">
-        {ADMIN_LINKS.map((item) => {
-          const Icon = item.icon;
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-extrabold transition-colors ${
-                active
-                  ? "bg-[#176B61] text-white shadow-xs"
-                  : "bg-white border border-[#E6DECB] text-[#525D58] hover:text-[#272E2B] hover:bg-[#F5EFE2]"
-              }`}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              <span>{locale === "vi" ? item.labelVi : item.labelEn}</span>
-            </Link>
-          );
-        })}
-      </div>
-
-      {/* Page Heading */}
+      {/* Compact Page Heading */}
       <div>
-        <h1 className="font-display-serif text-2xl sm:text-3xl font-extrabold text-[#272E2B]">
+        <h1 className="font-display-serif text-2xl font-extrabold text-[#272E2B]">
           {title}
         </h1>
-        <p className="text-sm text-[#525D58] mt-1">{subtitle}</p>
+        {subtitle && <p className="text-xs text-[#525D58] mt-0.5">{subtitle}</p>}
       </div>
 
       {children}
