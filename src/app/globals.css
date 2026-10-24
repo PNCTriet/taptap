@@ -1,0 +1,112 @@
+@import "tailwindcss";
+
+:root {
+  /* ==========================================================================
+   * TAPTAP — Playful Explorer Design Tokens (UI-001)
+   * ========================================================================== */
+
+  /* Brand Palette */
+  --color-explorer-teal: #176b61;
+  --color-explorer-teal-hover: #12564e;
+  --color-explorer-teal-active: #0e433d;
+  --color-explorer-teal-soft: #e6f3f1;
+
+  --color-adventure-coral: #f07861;
+  --color-adventure-coral-hover: #de634c;
+  --color-adventure-coral-soft: #fdece8;
+
+  --color-sunshine-yellow: #f2c653;
+  --color-sunshine-yellow-soft: #fdf6df;
+
+  --color-discovery-blue: #4d73cf;
+  --color-discovery-blue-soft: #eaf0fb;
+
+  /* Surfaces & Ink */
+  --color-paper-cream: #fff8eb;
+  --color-paper-elevated: #fffdf8;
+  --color-surface-white: #ffffff;
+  --color-surface-muted: #f5efe2;
+
+  --color-ink: #272e2b;
+  --color-ink-secondary: #525d58;
+  --color-ink-muted: #78847e;
+
+  /* Borders & Dividers */
+  --color-border-subtle: #e6decb;
+  --color-border-strong: #cfc4ab;
+
+  /* Semantic States */
+  --color-state-success: #1b7f5c;
+  --color-state-success-bg: #e7f6f0;
+  --color-state-warning: #b87514;
+  --color-state-warning-bg: #fef5e3;
+  --color-state-error: #c93b3b;
+  --color-state-error-bg: #fdeaea;
+  --color-state-info: #365ec2;
+  --color-state-info-bg: #ebf1fc;
+
+  /* Radii & Shadows */
+  --radius-card: 18px;
+  --radius-pill: 9999px;
+  --shadow-paper: 0 2px 8px -2px rgba(39, 46, 43, 0.07),
+    0 6px 20px -4px rgba(39, 46, 43, 0.05);
+  --shadow-stamp: 0 4px 14px -2px rgba(23, 107, 97, 0.14),
+    0 2px 6px -1px rgba(39, 46, 43, 0.08);
+}
+
+html,
+body {
+  background-color: var(--color-paper-cream);
+  color: var(--color-ink);
+  font-family: var(--font-nunito-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display-serif {
+  font-family: var(--font-fraunces), Georgia, Cambria, "Times New Roman", Times, serif;
+}
+
+/* Tactile Passport Card & Stamp Perforation Utilities */
+.paper-card {
+  background-color: var(--color-surface-white);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-paper);
+}
+
+.passport-sheet {
+  background-color: var(--color-paper-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 20px;
+  box-shadow: var(--shadow-paper);
+}
+
+.stamp-perforated-frame {
+  background-image: radial-gradient(
+    circle at 6px 6px,
+    var(--color-paper-cream) 4px,
+    transparent 4.5px
+  );
+  background-size: 16px 16px;
+}
+
+@keyframes stampPress {
+  0% {
+    transform: scale(1.22) rotate(-6deg);
+    opacity: 0.2;
+  }
+  65% {
+    transform: scale(0.96) rotate(-2deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(-2deg);
+    opacity: 1;
+  }
+}
+
+.animate-stamp-press {
+  animation: stampPress 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
