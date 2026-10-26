@@ -74,6 +74,8 @@ export const PILOT_STATIONS: PilotStation[] = [
       en: "East Heritage Path",
       vi: "Lối Di Sản Phía Đông",
     },
+    latitude: 10.7872,
+    longitude: 106.7051,
     imageUrl:
       "https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=900&q=80",
     status: "active",
@@ -121,6 +123,8 @@ export const PILOT_STATIONS: PilotStation[] = [
       en: "Botanical Glasshouse",
       vi: "Khu Nhà Kính",
     },
+    latitude: 10.7881,
+    longitude: 106.7048,
     imageUrl:
       "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80",
     status: "active",
@@ -154,7 +158,7 @@ export const PILOT_STATIONS: PilotStation[] = [
     slug: "flamingo-lagoon",
     name: {
       en: "Flamingo Lagoon",
-      vi: "Đầm Hồng Hạc",
+      vi: "Hồ Hồng Hạc",
     },
     description: {
       en: "Coral-pink flamingos gathered along the sunlit lotus lake.",
@@ -168,6 +172,8 @@ export const PILOT_STATIONS: PilotStation[] = [
       en: "Central Lagoon",
       vi: "Hồ Trung Tâm",
     },
+    latitude: 10.7886,
+    longitude: 106.7061,
     imageUrl:
       "https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80",
     status: "active",
@@ -181,7 +187,7 @@ export const PILOT_STATIONS: PilotStation[] = [
       id: "55555555-5555-4555-8555-555555555503",
       name: {
         en: "Flamingo Lagoon",
-        vi: "Đầm Hồng Hạc",
+        vi: "Hồ Hồng Hạc",
       },
       description: {
         en: "Central Lagoon",
@@ -201,7 +207,7 @@ export const PILOT_STATIONS: PilotStation[] = [
     slug: "giraffe-lookout",
     name: {
       en: "Giraffe Lookout",
-      vi: "Đài Hươu Cao Cổ",
+      vi: "Đài Ngắm Hươu Cao Cổ",
     },
     description: {
       en: "Watch giraffes browse high among the acacia treetops.",
@@ -215,6 +221,8 @@ export const PILOT_STATIONS: PilotStation[] = [
       en: "North Savanna Deck",
       vi: "Đài Quan Sát Phía Bắc",
     },
+    latitude: 10.7895,
+    longitude: 106.7056,
     imageUrl:
       "https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80",
     status: "active",
@@ -228,7 +236,7 @@ export const PILOT_STATIONS: PilotStation[] = [
       id: "55555555-5555-4555-8555-555555555504",
       name: {
         en: "Giraffe Lookout",
-        vi: "Đài Hươu Cao Cổ",
+        vi: "Đài Ngắm Hươu Cao Cổ",
       },
       description: {
         en: "North Savanna Deck",

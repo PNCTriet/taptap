@@ -70,6 +70,8 @@ create table if not exists public.stations (
   description text,
   image_url text,
   location_hint text,
+  latitude double precision,
+  longitude double precision,
   status text not null default 'active' check (status in ('active', 'maintenance', 'inactive')),
   created_at timestamptz not null default timezone('utc'::text, now()),
   updated_at timestamptz not null default timezone('utc'::text, now()),
@@ -660,11 +662,14 @@ create policy "redemptions_delete_own_or_admin"
     )
     or public.is_platform_admin()
   );
-
 -- =============================================================================
 -- TAPTAP Pilot Seed: Saigon Zoo & Botanical Gardens ("Zoo Explorer")
 -- 100% aligned with src/features/pilot/sample-data.ts and idempotent
 -- =============================================================================
+
+alter table public.stations
+  add column if not exists latitude double precision,
+  add column if not exists longitude double precision;
 
 -- 1. Pilot Venue
 insert into public.venues (id, name, slug, description, cover_image_url, status)
@@ -710,8 +715,8 @@ update public.stations set slug = 'temp-' || id::text where venue_id = '11111111
 delete from public.nfc_tags where public_code = 'tcv-disabled99' and id <> '44444444-4444-4444-8444-444444444499';
 update public.stamps set sort_order = sort_order + 100 where collection_id = '22222222-2222-4222-8222-222222222201';
 
--- 3. Pilot Stations (4 Checkpoints)
-insert into public.stations (id, venue_id, name, slug, description, image_url, location_hint, status)
+-- 3. Pilot Stations (4 Checkpoints with Live GPS Coordinates)
+insert into public.stations (id, venue_id, name, slug, description, image_url, location_hint, latitude, longitude, status)
 values
   (
     '33333333-3333-4333-8333-333333333301',
@@ -721,6 +726,8 @@ values
     'Gentle elephants beneath the century-old forest canopy.',
     'https://images.unsplash.com/photo-1557050543-4d5f4e07ef46?auto=format&fit=crop&w=900&q=80',
     'East Heritage Path',
+    10.7872,
+    106.7051,
     'active'
   ),
   (
@@ -731,6 +738,8 @@ values
     'Rare orchids and tropical ferns inside the glasshouse.',
     'https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?auto=format&fit=crop&w=900&q=80',
     'Botanical Glasshouse',
+    10.7881,
+    106.7048,
     'active'
   ),
   (
@@ -741,6 +750,8 @@ values
     'Coral-pink flamingos gathered along the sunlit lotus lake.',
     'https://images.unsplash.com/photo-1497206365907-f5e630693df0?auto=format&fit=crop&w=900&q=80',
     'Central Lagoon',
+    10.7886,
+    106.7061,
     'active'
   ),
   (
@@ -751,6 +762,8 @@ values
     'Watch giraffes browse high among the acacia treetops.',
     'https://images.unsplash.com/photo-1547721064-da6cfb341d50?auto=format&fit=crop&w=900&q=80',
     'North Savanna Deck',
+    10.7895,
+    106.7056,
     'active'
   )
 on conflict (id) do update set
@@ -759,6 +772,8 @@ on conflict (id) do update set
   description = excluded.description,
   image_url = excluded.image_url,
   location_hint = excluded.location_hint,
+  latitude = excluded.latitude,
+  longitude = excluded.longitude,
   status = excluded.status;
 
 -- 4. NFC Tags (4 Active Tags + 1 Disabled Demo Tag)

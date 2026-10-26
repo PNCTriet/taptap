@@ -1,7 +1,7 @@
 # TAPTAP
 
 **Tap. Explore. Collect.**  
-*NFC-powered digital stamp collection platform by HOWLSLAB.*
+*NFC-powered digital stamp collection platform by TAPTAP.*
 
 TAPTAP is a mobile-first web application that turns physical venues into interactive explorer trails. Visitors tap NFC checkpoints or scan QR codes at physical stations (`https://<APP_DOMAIN>/s/<PUBLIC_CODE>`) using their phone's native browser—no native app install or Web NFC API required—to collect tactile digital passport stamps, unlock badges, and redeem venue rewards.
 

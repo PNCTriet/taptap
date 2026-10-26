@@ -50,6 +50,8 @@ export interface PilotStation {
   description: LocalizedText;
   funFact: LocalizedText;
   locationHint: LocalizedText;
+  latitude: number;
+  longitude: number;
   imageUrl: string;
   status: StationStatus;
   tag: {

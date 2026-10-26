@@ -1,10 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Map } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import { StampCard } from "@/components/stamp-card";
+import { StationIllustration } from "@/components/station-artwork";
+import { ZooGpsMap } from "@/components/zoo-gps-map";
+import { AppIcon } from "@/components/ui/app-icon";
+import { formatDistance } from "@/lib/geo";
 
 export default function DiscoverPage() {
   const {
@@ -17,6 +21,8 @@ export default function DiscoverPage() {
     isStampCollected,
     getCollectedRecord,
   } = useExplorer();
+
+  const [distances, setDistances] = useState<Record<string, number>>({});
 
   const venue = venues[0];
   const featuredCollection = collections[0];
@@ -36,22 +42,21 @@ export default function DiscoverPage() {
   return (
     <div className="space-y-8">
       {/* Minimal Featured Collection Hero */}
-      <section className="paper-card overflow-hidden p-5 sm:p-6">
+      <section className="paper-card animate-card-enter overflow-hidden p-5 sm:p-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
-          {/* Prominent Real Photo (4:3 Aspect Ratio) */}
+          {/* Cohesive Saigon Zoo Explorer Crest Illustration (4:3 Aspect Ratio) */}
           <div className="md:col-span-6 overflow-hidden rounded-[16px] border border-[#E6DECB] bg-[#F5EFE2] aspect-[4/3]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={featuredCollection.coverImageUrl}
-              alt={t(featuredCollection.name)}
-              className="h-full w-full object-cover"
+            <StationIllustration
+              stationIdOrSlug={featuredCollection.slug}
+              variant="card"
+              className="h-full w-full"
             />
           </div>
 
-          {/* Concise Info + Progress + 1 Primary CTA */}
+          {/* Concise Info + Progress + Primary CTAs */}
           <div className="md:col-span-6 space-y-5">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-wider text-[#176B61]">
+              <p className="type-caption text-xs text-[#176B61]">
                 {t(venue.name)}
               </p>
               <h1 className="font-display-serif text-3xl sm:text-4xl font-extrabold text-[#272E2B] mt-1">
@@ -64,7 +69,7 @@ export default function DiscoverPage() {
                 <span className="text-[#525D58]">
                   {locale === "vi" ? "Tiến độ" : "Progress"}
                 </span>
-                <span className="font-mono text-[#176B61]">
+                <span className="type-mono text-[#176B61]">
                   {collectedCount} / {totalRequired}
                 </span>
               </div>
@@ -76,21 +81,31 @@ export default function DiscoverPage() {
               </div>
             </div>
 
-            <Link
-              href={`/collections/${featuredCollection.slug}`}
-              className="min-h-[48px] w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-full bg-[#176B61] hover:bg-[#12564E] active:bg-[#0E433D] text-white px-6 py-3 text-sm font-extrabold shadow-xs transition-colors"
-            >
-              <span>
-                {collectedCount > 0
-                  ? locale === "vi"
-                    ? "Tiếp tục"
-                    : "Continue"
-                  : locale === "vi"
-                  ? "Khám phá"
-                  : "Start exploring"}
-              </span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <Link
+                href={`/collections/${featuredCollection.slug}`}
+                className="min-h-[48px] flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 rounded-full bg-[#176B61] hover:bg-[#12564E] active:scale-[0.97] text-white px-6 py-3 text-sm font-extrabold shadow-xs transition-all duration-150"
+              >
+                <span>
+                  {collectedCount > 0
+                    ? locale === "vi"
+                      ? "Tiếp tục"
+                      : "Continue"
+                    : locale === "vi"
+                      ? "Khám phá"
+                      : "Start exploring"}
+                </span>
+                <AppIcon icon={ArrowRight} size="sm" />
+              </Link>
+
+              <Link
+                href="/map"
+                className="min-h-[48px] inline-flex items-center justify-center gap-2 rounded-full border border-[#E6DECB] bg-[#FFF8EB] hover:bg-[#F5EFE2] active:scale-[0.97] text-[#272E2B] px-5 py-3 text-sm font-extrabold transition-all duration-150"
+              >
+                <AppIcon icon={Map} size="sm" className="text-[#176B61]" />
+                <span>{locale === "vi" ? "Bản đồ GPS" : "Live GPS Map"}</span>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -101,7 +116,7 @@ export default function DiscoverPage() {
           <h2 className="font-display-serif text-xl font-extrabold text-[#272E2B]">
             {locale === "vi" ? "Các trạm" : "Stations"}
           </h2>
-          <span className="font-mono text-xs font-bold text-[#78847E]">
+          <span className="type-mono text-xs font-bold text-[#78847E]">
             {collectedCount} / {totalRequired}
           </span>
         </div>
@@ -110,6 +125,7 @@ export default function DiscoverPage() {
           {stations.map((station) => {
             const collected = isStampCollected(station.stamp.id);
             const record = getCollectedRecord(station.stamp.id);
+            const dist = distances[station.id];
             return (
               <StampCard
                 key={station.id}
@@ -118,14 +134,37 @@ export default function DiscoverPage() {
                   collected
                     ? "collected"
                     : station.status === "active"
-                    ? "available"
-                    : "locked"
+                      ? "available"
+                      : "locked"
                 }
                 collectedAt={record?.collectedAt}
+                distanceLabel={
+                  typeof dist === "number"
+                    ? formatDistance(dist, locale)
+                    : null
+                }
               />
             );
           })}
         </div>
+      </section>
+
+      {/* Embedded Interactive Saigon Zoo GPS Map Preview */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display-serif text-xl font-extrabold text-[#272E2B]">
+            {locale === "vi" ? "Bản đồ Thảo Cầm Viên" : "Saigon Zoo Map"}
+          </h2>
+          <Link
+            href="/map"
+            className="inline-flex items-center gap-1 text-xs font-extrabold text-[#176B61] hover:underline"
+          >
+            <span>{locale === "vi" ? "Mở toàn màn hình" : "Open Live GPS Map"}</span>
+            <AppIcon icon={ArrowRight} size="xs" />
+          </Link>
+        </div>
+
+        <ZooGpsMap compact onDistancesChange={setDistances} />
       </section>
     </div>
   );

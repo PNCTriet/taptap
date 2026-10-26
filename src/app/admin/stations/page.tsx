@@ -17,6 +17,7 @@ import {
 import { useExplorer } from "@/context/explorer-context";
 import { AdminShell } from "@/components/admin-shell";
 import { QrCodeSvg } from "@/components/qr-code-svg";
+import { StationIllustration } from "@/components/station-artwork";
 import type { PilotStation } from "@/types/domain";
 
 const stationFormSchema = z.object({
@@ -142,6 +143,8 @@ export default function AdminStationsPage() {
         en: values.locationHintEn,
         vi: editing?.locationHint.vi ?? values.locationHintEn,
       },
+      latitude: editing?.latitude ?? 10.7883,
+      longitude: editing?.longitude ?? 106.7054,
       imageUrl: values.imageUrl,
       status: values.status,
       tag: {
@@ -213,6 +216,13 @@ export default function AdminStationsPage() {
             >
               {/* Station Info */}
               <div className="lg:col-span-8 space-y-2.5">
+                <div className="flex items-center gap-3">
+                  <StationIllustration stationIdOrSlug={st.id} variant="avatar" className="h-12 w-12 shrink-0 border border-[#E6DECB]" />
+                  <div>
+                    <h2 className="font-display-serif text-xl font-extrabold text-[#272E2B]">{t(st.name)}</h2>
+                    <p className="type-mono text-[11px] text-[#78847E]">{st.latitude.toFixed(4)}, {st.longitude.toFixed(4)}</p>
+                  </div>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold uppercase ${
@@ -241,9 +251,6 @@ export default function AdminStationsPage() {
                   </span>
                 </div>
 
-                <h2 className="font-display-serif text-xl font-extrabold text-[#272E2B]">
-                  {t(st.name)}
-                </h2>
                 <p className="text-xs text-[#525D58]">{t(st.description)}</p>
 
                 {/* Copyable Full NFC URL */}

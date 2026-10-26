@@ -6,6 +6,12 @@ import {
   sanitizeNextPath,
   validatePublicCode,
 } from "@/lib/env";
+import {
+  SAIGON_ZOO_CENTER,
+  calculateDistanceMeters,
+  formatDistance,
+  getWalkingDirectionsUrl,
+} from "@/lib/geo";
 import { resolveStationByPublicCode } from "@/server/stations/resolve-station";
 import {
   findPilotCollectionBySlug,
@@ -66,6 +72,34 @@ describe("OAuth Callback Next-Path Sanitizer (src/app/auth/callback/route.ts)", 
   });
 });
 
+describe("GPS Distance & Formatting Utilities (src/lib/geo.ts)", () => {
+  it("calculates Haversine distance in meters between Saigon Zoo stations", () => {
+    expect(
+      calculateDistanceMeters(
+        SAIGON_ZOO_CENTER.lat,
+        SAIGON_ZOO_CENTER.lng,
+        SAIGON_ZOO_CENTER.lat,
+        SAIGON_ZOO_CENTER.lng
+      )
+    ).toBe(0);
+
+    // Distance between Asian Elephant (10.7872, 106.7051) and Giraffe Lookout (10.7895, 106.7056)
+    const dist = calculateDistanceMeters(10.7872, 106.7051, 10.7895, 106.7056);
+    expect(dist).toBeGreaterThan(240);
+    expect(dist).toBeLessThan(280);
+  });
+
+  it("formats meter and kilometer distances cleanly in EN and VI", () => {
+    expect(formatDistance(45, "en")).toBe("45m");
+    expect(formatDistance(999, "vi")).toBe("999m");
+    expect(formatDistance(1240, "en")).toBe("1.2km");
+    expect(formatDistance(1240, "vi")).toBe("1,2km");
+    expect(getWalkingDirectionsUrl(10.7872, 106.7051)).toContain(
+      "destination=10.7872,106.7051"
+    );
+  });
+});
+
 describe("NFC / QR Public Code Validation & Station Resolution", () => {
   it("accepts non-sequential alphanumeric public codes of length >= 6", () => {
     expect(validatePublicCode("tcv-k9x2m4p8").success).toBe(true);
@@ -80,12 +114,21 @@ describe("NFC / QR Public Code Validation & Station Resolution", () => {
     expect(validatePublicCode("tcv-k9x2<script>").success).toBe(false);
   });
 
-  it("resolves all 4 Saigon Zoo stations and matches seed.sql public codes", async () => {
+  it("resolves all 4 Saigon Zoo stations with GPS coordinates and matches seed.sql public codes", async () => {
     expect(PILOT_STATIONS.map((s) => s.slug)).toEqual([
       "asian-elephant",
       "botanical-conservatory",
       "flamingo-lagoon",
       "giraffe-lookout",
+    ]);
+
+    expect(
+      PILOT_STATIONS.map((s) => ({ lat: s.latitude, lng: s.longitude }))
+    ).toEqual([
+      { lat: 10.7872, lng: 106.7051 },
+      { lat: 10.7881, lng: 106.7048 },
+      { lat: 10.7886, lng: 106.7061 },
+      { lat: 10.7895, lng: 106.7056 },
     ]);
 
     expect(PILOT_STATIONS.map((s) => s.tag.publicCode)).toEqual([

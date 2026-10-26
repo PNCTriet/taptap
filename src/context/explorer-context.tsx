@@ -282,7 +282,15 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
               : prev.collections,
           stations:
             Array.isArray(parsed.stations) && parsed.stations.length > 0
-              ? parsed.stations
+              ? parsed.stations.map((st) => {
+                  const seedMatch = PILOT_STATIONS.find((p) => p.id === st.id || p.slug === st.slug);
+                  return {
+                    ...seedMatch,
+                    ...st,
+                    latitude: typeof st.latitude === "number" ? st.latitude : (seedMatch?.latitude ?? 10.7883),
+                    longitude: typeof st.longitude === "number" ? st.longitude : (seedMatch?.longitude ?? 106.7054),
+                  };
+                })
               : prev.stations,
           rewards:
             Array.isArray(parsed.rewards) && parsed.rewards.length > 0
