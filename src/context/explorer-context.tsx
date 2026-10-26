@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import type { User } from "@supabase/supabase-js";
 import {
   PILOT_BADGES,
   PILOT_COLLECTIONS,
@@ -32,7 +33,6 @@ import type {
 } from "@/types/domain";
 
 const STORAGE_KEY = "taptap_explorer_state_v1";
-export const GMAIL_SESSION_STORAGE_KEY = "taptap.gmail.session.v1";
 
 export interface AuthUserProfile {
   id: string;
@@ -43,12 +43,6 @@ export interface AuthUserProfile {
 }
 
 export type AuthenticatedGoogleUser = AuthUserProfile;
-
-interface StoredGmailSession {
-  id: string;
-  email: string;
-  displayName: string;
-}
 
 interface StoredExplorerState {
   session: ExplorerParticipantSession;
@@ -66,7 +60,6 @@ interface RpcPassportResponse {
     id: string;
     email: string;
     display_name: string | null;
-    device_token?: string | null;
   } | null;
   stamps?: Array<{
     id: string;
@@ -119,34 +112,26 @@ function createInitialState(): StoredExplorerState {
   };
 }
 
-export function normalizeGmailInput(rawEmail: string): {
-  valid: boolean;
-  email: string;
-} {
-  const trimmed = rawEmail.trim().toLowerCase();
-  if (!trimmed) {
-    return { valid: false, email: "" };
-  }
-  const withDomain = trimmed.includes("@") ? trimmed : `${trimmed}@gmail.com`;
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return {
-    valid: emailRegex.test(withDomain),
-    email: withDomain,
-  };
-}
+export function mapSupabaseUser(supaUser: User): AuthUserProfile {
+  const meta = supaUser.user_metadata ?? {};
+  const fullName: string =
+    (typeof meta.full_name === "string" && meta.full_name.trim()) ||
+    (typeof meta.name === "string" && meta.name.trim()) ||
+    (supaUser.email
+      ? (supaUser.email.split("@")[0] ?? "Saigon Explorer")
+      : "Saigon Explorer");
+  const avatarUrl: string | null =
+    (typeof meta.avatar_url === "string" && meta.avatar_url) ||
+    (typeof meta.picture === "string" && meta.picture) ||
+    null;
 
-export function deriveDisplayNameFromEmail(
-  email: string,
-  customName?: string
-): string {
-  const trimmedName = customName?.trim();
-  if (trimmedName) return trimmedName;
-  const localPart = email.split("@")[0] ?? "Explorer";
-  const cleaned = localPart
-    .replace(/[._-]+/g, " ")
-    .trim()
-    .replace(/\b\w/g, (c) => c.toUpperCase());
-  return cleaned || "Saigon Explorer";
+  return {
+    id: supaUser.id,
+    email: supaUser.email ?? null,
+    name: fullName,
+    displayName: fullName,
+    avatarUrl,
+  };
 }
 
 export interface CollectStampOutcome {
@@ -168,14 +153,9 @@ interface ExplorerContextValue {
   isAuthenticated: boolean;
   user: AuthUserProfile | null;
   authError: string | null;
-  isGmailModalOpen: boolean;
-  openGmailModal: () => void;
-  closeGmailModal: () => void;
-  signInWithGmail: (
-    email: string,
-    displayName?: string
+  signInWithGoogle: (
+    nextPath?: string
   ) => Promise<{ ok: boolean; error?: string }>;
-  signInWithGoogle: (nextPath?: string) => Promise<void>;
   signOut: () => Promise<void>;
   session: ExplorerParticipantSession;
   updateDisplayName: (name: string) => void;
@@ -217,10 +197,9 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     []
   );
   const [hydrated, setHydrated] = useState(false);
-  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [authLoading, setAuthLoading] = useState<boolean>(isSupabaseConfigured);
   const [user, setUser] = useState<AuthUserProfile | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isGmailModalOpen, setIsGmailModalOpen] = useState<boolean>(false);
   const [state, setState] = useState<StoredExplorerState>(createInitialState);
 
   const stationsRef = useRef<PilotStation[]>(PILOT_STATIONS);
@@ -228,143 +207,232 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     stationsRef.current = state.stations;
   }, [state.stations]);
 
-  const applyPassportPayload = useCallback(
-    (
-      payload: RpcPassportResponse,
-      fallbackEmail: string,
-      fallbackDisplayName: string
-    ): AuthUserProfile => {
-      const participant = payload.participant;
-      const resolvedId = participant?.id ?? `gmail-${fallbackEmail}`;
-      const resolvedEmail = participant?.email ?? fallbackEmail;
-      const resolvedName =
-        participant?.display_name?.trim() || fallbackDisplayName;
-
-      const profile: AuthUserProfile = {
-        id: resolvedId,
-        email: resolvedEmail,
-        name: resolvedName,
-        displayName: resolvedName,
-        avatarUrl: null,
-      };
-
-      const mappedStamps: CollectedStampRecord[] = (payload.stamps ?? [])
-        .map((row): CollectedStampRecord | null => {
-          const matchedStation = stationsRef.current.find(
-            (s) =>
-              s.stamp.id === row.stamp_id ||
-              (row.station_id && s.id === row.station_id)
-          );
-          if (!matchedStation) return null;
-          return {
-            id: row.id,
-            participantId: row.participant_id || resolvedId,
-            stampId: row.stamp_id,
-            stationId: matchedStation.id,
-            publicCode: matchedStation.tag.publicCode,
-            collectedAt: row.collected_at,
-            source: "nfc" as const,
-          };
-        })
-        .filter((item): item is CollectedStampRecord => item !== null);
-
-      const mappedBadges: string[] = (payload.badges ?? []).map(
-        (b) => b.badge_id
-      );
-
-      const mappedRedemptions: RedemptionRecord[] = (
-        payload.redemptions ?? []
-      ).map((row) => ({
-        id: row.id,
-        participantId: row.participant_id || resolvedId,
-        rewardId: row.reward_id,
-        redemptionCode:
-          row.voucher_code || row.redemption_code || "ZOO-REWARD",
-        status: row.status,
-        createdAt:
-          row.created_at || row.redeemed_at || new Date().toISOString(),
-        redeemedAt: row.redeemed_at,
-      }));
-
-      setUser(profile);
-      setState((prev) => ({
-        ...prev,
-        session: {
-          ...prev.session,
-          participantId: resolvedId,
-          authUserId: resolvedId,
-          isAnonymous: false,
-          displayName: resolvedName,
-        },
-        collectedStamps: mappedStamps,
-        earnedBadges: mappedBadges,
-        redemptions: mappedRedemptions,
-      }));
-
-      try {
-        const storedSession: StoredGmailSession = {
-          id: resolvedId,
-          email: resolvedEmail,
-          displayName: resolvedName,
-        };
-        window.localStorage.setItem(
-          GMAIL_SESSION_STORAGE_KEY,
-          JSON.stringify(storedSession)
-        );
-      } catch {
-        // Ignore storage write errors
-      }
-
-      return profile;
-    },
-    []
-  );
-
-  const syncGmailSessionWithSupabase = useCallback(
-    async (email: string, displayName: string) => {
+  const syncParticipantFromSupabase = useCallback(
+    async (supaUser: User) => {
       if (!isSupabaseConfigured) return;
       try {
         const supabase = createClientSupabaseClient();
-        const { data, error } = await supabase.rpc(
-          "upsert_gmail_participant",
-          {
-            p_email: email,
-            p_display_name: displayName,
-            p_device_token: `gmail:${email}`,
-          }
-        );
-        if (!error && data && typeof data === "object") {
-          applyPassportPayload(
-            data as unknown as RpcPassportResponse,
-            email,
-            displayName
+        const mappedUser = mapSupabaseUser(supaUser);
+        setUser(mappedUser);
+
+        // 1. Upsert participant row by auth_user_id
+        const { data: participantRow, error: upsertErr } = await supabase
+          .from("participants")
+          .upsert(
+            {
+              auth_user_id: supaUser.id,
+              email: supaUser.email ?? null,
+              display_name: mappedUser.name,
+            },
+            { onConflict: "auth_user_id" }
+          )
+          .select("*")
+          .single();
+
+        if (!upsertErr && participantRow) {
+          const effectiveName = participantRow.display_name || mappedUser.name;
+          setUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  name: effectiveName,
+                  displayName: effectiveName,
+                }
+              : mappedUser
           );
+
+          const [
+            { data: dbStamps },
+            { data: dbBadges },
+            { data: dbRedemptions },
+          ] = await Promise.all([
+            supabase
+              .from("collected_stamps")
+              .select("*")
+              .eq("participant_id", participantRow.id)
+              .order("collected_at", { ascending: true }),
+            supabase
+              .from("participant_badges")
+              .select("*")
+              .eq("participant_id", participantRow.id),
+            supabase
+              .from("redemptions")
+              .select("*")
+              .eq("participant_id", participantRow.id)
+              .order("created_at", { ascending: false }),
+          ]);
+
+          const mappedStamps: CollectedStampRecord[] = (dbStamps ?? [])
+            .map((row): CollectedStampRecord | null => {
+              const matchedStation = stationsRef.current.find(
+                (s) => s.stamp.id === row.stamp_id
+              );
+              if (!matchedStation) return null;
+              return {
+                id: row.id,
+                participantId: row.participant_id,
+                stampId: row.stamp_id,
+                stationId: matchedStation.id,
+                publicCode: matchedStation.tag.publicCode,
+                collectedAt: row.collected_at,
+                source: row.source,
+              };
+            })
+            .filter((item): item is CollectedStampRecord => item !== null);
+
+          const mappedBadges: string[] = (dbBadges ?? []).map(
+            (b) => b.badge_id
+          );
+
+          const mappedRedemptions: RedemptionRecord[] = (
+            dbRedemptions ?? []
+          ).map((row) => ({
+            id: row.id,
+            participantId: row.participant_id,
+            rewardId: row.reward_id,
+            redemptionCode: row.redemption_code,
+            status: row.status,
+            createdAt: row.created_at,
+            redeemedAt: row.redeemed_at,
+          }));
+
+          setState((prev) => ({
+            ...prev,
+            session: {
+              participantId: participantRow.id,
+              authUserId: participantRow.auth_user_id,
+              isAnonymous: false,
+              displayName: effectiveName,
+              locale: participantRow.locale ?? prev.session.locale,
+              createdAt: participantRow.created_at,
+            },
+            collectedStamps: mappedStamps,
+            earnedBadges: mappedBadges,
+            redemptions: mappedRedemptions,
+          }));
+          return;
         }
+
+        // Fallback via email RPC if participant already existed by email
+        if (supaUser.email) {
+          const { data: rpcData, error: rpcErr } = await supabase.rpc(
+            "upsert_gmail_participant",
+            {
+              p_email: supaUser.email,
+              p_display_name: mappedUser.name,
+              p_device_token: `oauth:${supaUser.id}`,
+            }
+          );
+
+          if (!rpcErr && rpcData && typeof rpcData === "object") {
+            const payload = rpcData as unknown as RpcPassportResponse;
+            const participant = payload.participant;
+            const resolvedId = participant?.id ?? supaUser.id;
+            const effectiveName =
+              participant?.display_name?.trim() || mappedUser.name;
+
+            setUser((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    name: effectiveName,
+                    displayName: effectiveName,
+                  }
+                : mappedUser
+            );
+
+            const mappedStamps: CollectedStampRecord[] = (payload.stamps ?? [])
+              .map((row): CollectedStampRecord | null => {
+                const matchedStation = stationsRef.current.find(
+                  (s) =>
+                    s.stamp.id === row.stamp_id ||
+                    (row.station_id && s.id === row.station_id)
+                );
+                if (!matchedStation) return null;
+                return {
+                  id: row.id,
+                  participantId: row.participant_id || resolvedId,
+                  stampId: row.stamp_id,
+                  stationId: matchedStation.id,
+                  publicCode: matchedStation.tag.publicCode,
+                  collectedAt: row.collected_at,
+                  source: "nfc",
+                };
+              })
+              .filter((item): item is CollectedStampRecord => item !== null);
+
+            const mappedBadges: string[] = (payload.badges ?? []).map(
+              (b) => b.badge_id
+            );
+
+            const mappedRedemptions: RedemptionRecord[] = (
+              payload.redemptions ?? []
+            ).map((row) => ({
+              id: row.id,
+              participantId: row.participant_id || resolvedId,
+              rewardId: row.reward_id,
+              redemptionCode:
+                row.voucher_code || row.redemption_code || "ZOO-REWARD",
+              status: row.status,
+              createdAt:
+                row.created_at || row.redeemed_at || new Date().toISOString(),
+              redeemedAt: row.redeemed_at,
+            }));
+
+            setState((prev) => ({
+              ...prev,
+              session: {
+                ...prev.session,
+                participantId: resolvedId,
+                authUserId: supaUser.id,
+                isAnonymous: false,
+                displayName: effectiveName,
+              },
+              collectedStamps: mappedStamps,
+              earnedBadges: mappedBadges,
+              redemptions: mappedRedemptions,
+            }));
+            return;
+          }
+        }
+
+        setState((prev) => ({
+          ...prev,
+          session: {
+            ...prev.session,
+            participantId: supaUser.id,
+            authUserId: supaUser.id,
+            isAnonymous: false,
+            displayName: mappedUser.name,
+          },
+        }));
       } catch {
-        // Keep local Gmail session if offline
+        // Keep current client state if network is temporarily unreachable
       }
     },
-    [isSupabaseConfigured, applyPassportPayload]
+    [isSupabaseConfigured]
   );
 
-  // Hydrate local state & Gmail session on initial mount
+  // Hydrate local catalog state & inspect URL auth_error if present
   useEffect(() => {
-    let mounted = true;
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<StoredExplorerState>;
         setState((prev) => ({
           session: parsed.session ?? prev.session,
-          collectedStamps: Array.isArray(parsed.collectedStamps)
-            ? parsed.collectedStamps
-            : prev.collectedStamps,
-          earnedBadges: Array.isArray(parsed.earnedBadges)
-            ? parsed.earnedBadges
-            : prev.earnedBadges,
-          redemptions: Array.isArray(parsed.redemptions)
-            ? parsed.redemptions
-            : prev.redemptions,
+          collectedStamps:
+            !isSupabaseConfigured && Array.isArray(parsed.collectedStamps)
+              ? parsed.collectedStamps
+              : prev.collectedStamps,
+          earnedBadges:
+            !isSupabaseConfigured && Array.isArray(parsed.earnedBadges)
+              ? parsed.earnedBadges
+              : prev.earnedBadges,
+          redemptions:
+            !isSupabaseConfigured && Array.isArray(parsed.redemptions)
+              ? parsed.redemptions
+              : prev.redemptions,
           venues:
             Array.isArray(parsed.venues) && parsed.venues.length > 0
               ? parsed.venues
@@ -400,57 +468,83 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         }));
       }
 
-      const rawGmail = window.localStorage.getItem(GMAIL_SESSION_STORAGE_KEY);
-      if (rawGmail) {
-        const parsedGmail = JSON.parse(
-          rawGmail
-        ) as Partial<StoredGmailSession>;
-        if (parsedGmail && typeof parsedGmail.email === "string") {
-          const { valid, email } = normalizeGmailInput(parsedGmail.email);
-          if (valid) {
-            const displayName = deriveDisplayNameFromEmail(
-              email,
-              parsedGmail.displayName
-            );
-            const initialProfile: AuthUserProfile = {
-              id: parsedGmail.id || `gmail-${email}`,
-              email,
-              name: displayName,
-              displayName,
-              avatarUrl: null,
-            };
-            setUser(initialProfile);
-            setState((prev) => ({
-              ...prev,
-              session: {
-                ...prev.session,
-                participantId: initialProfile.id,
-                authUserId: initialProfile.id,
-                isAnonymous: false,
-                displayName,
-              },
-            }));
-            void syncGmailSessionWithSupabase(email, displayName).finally(
-              () => {
-                if (mounted) setAuthLoading(false);
-              }
-            );
-            setHydrated(true);
-            return;
-          }
-        }
+      const params = new URLSearchParams(window.location.search);
+      const urlAuthError =
+        params.get("auth_error") || params.get("error_description");
+      if (urlAuthError) {
+        setAuthError(urlAuthError);
       }
     } catch {
       // Ignore storage read errors in restricted private browsing modes
+    } finally {
+      setHydrated(true);
+    }
+  }, [isSupabaseConfigured]);
+
+  // Subscribe ONLY to real Supabase Auth (getUser + onAuthStateChange)
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setAuthLoading(false);
+      return;
     }
 
-    setHydrated(true);
-    setAuthLoading(false);
+    let mounted = true;
+    const supabase = createClientSupabaseClient();
+
+    supabase.auth
+      .getUser()
+      .then(async ({ data }) => {
+        if (!mounted) return;
+        if (data.user) {
+          await syncParticipantFromSupabase(data.user);
+        } else {
+          setUser(null);
+          setState((prev) => ({
+            ...prev,
+            session: {
+              ...prev.session,
+              authUserId: null,
+              isAnonymous: true,
+            },
+          }));
+        }
+      })
+      .catch(() => {
+        // Ignore transient network errors
+      })
+      .finally(() => {
+        if (mounted) {
+          setAuthLoading(false);
+        }
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return;
+      if (nextSession?.user) {
+        void syncParticipantFromSupabase(nextSession.user);
+      } else {
+        setUser(null);
+        setState((prev) => ({
+          ...prev,
+          collectedStamps: [],
+          earnedBadges: [],
+          redemptions: [],
+          session: {
+            ...prev.session,
+            authUserId: null,
+            isAnonymous: true,
+          },
+        }));
+      }
+    });
 
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
-  }, [syncGmailSessionWithSupabase]);
+  }, [isSupabaseConfigured, syncParticipantFromSupabase]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -461,103 +555,54 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [hydrated, state]);
 
-  const signInWithGmail = useCallback(
-    async (
-      rawEmail: string,
-      customDisplayName?: string
-    ): Promise<{ ok: boolean; error?: string }> => {
+  const signInWithGoogle = useCallback(
+    async (nextPath?: string): Promise<{ ok: boolean; error?: string }> => {
       setAuthError(null);
-      const { valid, email } = normalizeGmailInput(rawEmail);
-      if (!valid) {
-        const msg =
-          state.session.locale === "vi"
-            ? "Vui lòng nhập địa chỉ Gmail hợp lệ."
-            : "Please enter a valid Gmail address.";
-        setAuthError(msg);
-        return { ok: false, error: msg };
+      if (!isSupabaseConfigured) {
+        const message = "Supabase Auth is not configured.";
+        setAuthError(message);
+        return { ok: false, error: message };
       }
 
-      const finalDisplayName = deriveDisplayNameFromEmail(
-        email,
-        customDisplayName
-      );
+      const supabase = createClientSupabaseClient();
+      const redirectPath =
+        nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+          ? nextPath
+          : typeof window !== "undefined"
+            ? window.location.pathname
+            : "/passport";
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+        redirectPath
+      )}`;
 
-      if (isSupabaseConfigured) {
-        try {
-          const supabase = createClientSupabaseClient();
-          const { data, error } = await supabase.rpc(
-            "upsert_gmail_participant",
-            {
-              p_email: email,
-              p_display_name: finalDisplayName,
-              p_device_token: `gmail:${email}`,
-            }
-          );
-
-          if (!error && data && typeof data === "object") {
-            applyPassportPayload(
-              data as unknown as RpcPassportResponse,
-              email,
-              finalDisplayName
-            );
-            setIsGmailModalOpen(false);
-            return { ok: true };
-          }
-        } catch {
-          // Fall through to local session fallback if offline
-        }
-      }
-
-      // Offline / local preview fallback
-      applyPassportPayload(
-        {
-          participant: {
-            id: `gmail-${email}`,
-            email,
-            display_name: finalDisplayName,
-            device_token: `gmail:${email}`,
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            prompt: "select_account",
           },
-          stamps: [],
-          badges: [],
-          redemptions: [],
         },
-        email,
-        finalDisplayName
-      );
-      setIsGmailModalOpen(false);
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        return { ok: false, error: error.message };
+      }
+
       return { ok: true };
     },
-    [isSupabaseConfigured, applyPassportPayload, state.session.locale]
+    [isSupabaseConfigured]
   );
-
-  const openGmailModal = useCallback(() => {
-    setAuthError(null);
-    setIsGmailModalOpen(true);
-  }, []);
-
-  const closeGmailModal = useCallback(() => {
-    setAuthError(null);
-    setIsGmailModalOpen(false);
-  }, []);
-
-  const signInWithGoogle = useCallback(async () => {
-    setAuthError(null);
-    setIsGmailModalOpen(true);
-  }, []);
 
   const signOut = useCallback(async () => {
     setAuthError(null);
-    try {
-      window.localStorage.removeItem(GMAIL_SESSION_STORAGE_KEY);
-    } catch {
-      // Ignore storage errors
-    }
     if (isSupabaseConfigured) {
       try {
         const supabase = createClientSupabaseClient();
         await supabase.auth.signOut();
       } catch {
-        // Ignore auth signout error
+        // Ignore signOut network errors
       }
     }
     setUser(null);
@@ -581,8 +626,20 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
           locale: nextLocale,
         },
       }));
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void supabase
+          .from("participants")
+          .update({ locale: nextLocale })
+          .eq("id", state.session.participantId);
+      }
     },
-    []
+    [
+      isSupabaseConfigured,
+      user,
+      state.session.isAnonymous,
+      state.session.participantId,
+    ]
   );
 
   const t = useCallback(
@@ -607,32 +664,20 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         prev ? { ...prev, name: trimmed, displayName: trimmed } : null
       );
 
-      if (user?.email) {
-        try {
-          const updatedSession: StoredGmailSession = {
-            id: user.id,
-            email: user.email,
-            displayName: trimmed,
-          };
-          window.localStorage.setItem(
-            GMAIL_SESSION_STORAGE_KEY,
-            JSON.stringify(updatedSession)
-          );
-        } catch {
-          // Ignore storage error
-        }
-
-        if (isSupabaseConfigured) {
-          const supabase = createClientSupabaseClient();
-          void supabase.rpc("upsert_gmail_participant", {
-            p_email: user.email,
-            p_display_name: trimmed,
-            p_device_token: `gmail:${user.email}`,
-          });
-        }
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void supabase
+          .from("participants")
+          .update({ display_name: trimmed })
+          .eq("id", state.session.participantId);
       }
     },
-    [isSupabaseConfigured, user]
+    [
+      isSupabaseConfigured,
+      user,
+      state.session.isAnonymous,
+      state.session.participantId,
+    ]
   );
 
   const isStampCollected = useCallback(
@@ -720,42 +765,42 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
             : prev.earnedBadges,
       }));
 
-      if (isSupabaseConfigured && user?.email) {
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
         const supabase = createClientSupabaseClient();
-        void supabase
-          .rpc("collect_gmail_participant_stamp", {
-            p_email: user.email,
-            p_stamp_id: station.stamp.id,
-            p_station_id: station.id,
-            p_nfc_tag_id: station.tag.id,
-            p_award_badge_id:
-              willCompleteCollection && badge ? badge.id : null,
-          })
-          .then(({ data }) => {
-            if (data && typeof data === "object") {
-              const row = data as {
-                id?: string;
-                participant_id?: string;
-                collected_at?: string;
-              };
-              if (row.id) {
-                setState((prev) => ({
-                  ...prev,
-                  collectedStamps: prev.collectedStamps.map((item) =>
-                    item.stampId === station.stamp.id
-                      ? {
-                          ...item,
-                          id: row.id ?? item.id,
-                          participantId:
-                            row.participant_id ?? item.participantId,
-                          collectedAt: row.collected_at ?? item.collectedAt,
-                        }
-                      : item
-                  ),
-                }));
-              }
-            }
-          });
+        void (async () => {
+          const { error: upsertErr } = await supabase
+            .from("collected_stamps")
+            .upsert(
+              {
+                participant_id: state.session.participantId,
+                stamp_id: station.stamp.id,
+                nfc_tag_id: station.tag.id,
+                source,
+              },
+              { onConflict: "participant_id,stamp_id" }
+            );
+
+          if (!upsertErr && willCompleteCollection && badge) {
+            await supabase.from("participant_badges").upsert(
+              {
+                participant_id: state.session.participantId,
+                badge_id: badge.id,
+              },
+              { onConflict: "participant_id,badge_id" }
+            );
+          }
+
+          if (upsertErr && user.email) {
+            await supabase.rpc("collect_gmail_participant_stamp", {
+              p_email: user.email,
+              p_stamp_id: station.stamp.id,
+              p_station_id: station.id,
+              p_nfc_tag_id: station.tag.id,
+              p_award_badge_id:
+                willCompleteCollection && badge ? badge.id : null,
+            });
+          }
+        })();
       }
 
       return {
@@ -768,6 +813,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     [
       state.collectedStamps,
       state.session.participantId,
+      state.session.isAnonymous,
       state.stations,
       isSupabaseConfigured,
       user,
@@ -819,54 +865,49 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         redemptions: [...prev.redemptions, created],
       }));
 
-      if (isSupabaseConfigured && user?.email) {
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
         const supabase = createClientSupabaseClient();
-        void supabase
-          .rpc("claim_gmail_participant_reward", {
-            p_email: user.email,
-            p_reward_id: reward.id,
-            p_voucher_code: created.redemptionCode,
-            p_expires_at: expiresAtIso,
-          })
-          .then(({ data }) => {
-            if (data && typeof data === "object") {
-              const row = data as {
-                id?: string;
-                participant_id?: string;
-                reward_id?: string;
-                voucher_code?: string;
-                redemption_code?: string;
-                status?: "issued" | "redeemed" | "expired" | "cancelled";
-                created_at?: string;
-                redeemed_at?: string | null;
-              };
-              if (row.id) {
-                setState((prev) => ({
-                  ...prev,
-                  redemptions: prev.redemptions.map((item) =>
-                    item.rewardId === reward.id
-                      ? {
-                          id: row.id ?? item.id,
-                          participantId:
-                            row.participant_id ?? item.participantId,
-                          rewardId: row.reward_id ?? item.rewardId,
-                          redemptionCode:
-                            row.voucher_code ??
-                            row.redemption_code ??
-                            item.redemptionCode,
-                          status: row.status ?? item.status,
-                          createdAt: row.created_at ?? item.createdAt,
-                          redeemedAt:
-                            row.redeemed_at !== undefined
-                              ? row.redeemed_at
-                              : item.redeemedAt,
-                        }
-                      : item
-                  ),
-                }));
-              }
-            }
-          });
+        void (async () => {
+          const { data, error } = await supabase
+            .from("redemptions")
+            .upsert(
+              {
+                participant_id: state.session.participantId,
+                reward_id: reward.id,
+                redemption_code: created.redemptionCode,
+                status: "issued",
+              },
+              { onConflict: "participant_id,reward_id" }
+            )
+            .select("*")
+            .single();
+
+          if (!error && data) {
+            setState((prev) => ({
+              ...prev,
+              redemptions: prev.redemptions.map((item) =>
+                item.rewardId === reward.id
+                  ? {
+                      id: data.id,
+                      participantId: data.participant_id,
+                      rewardId: data.reward_id,
+                      redemptionCode: data.redemption_code,
+                      status: data.status,
+                      createdAt: data.created_at,
+                      redeemedAt: data.redeemed_at,
+                    }
+                  : item
+              ),
+            }));
+          } else if (user.email) {
+            await supabase.rpc("claim_gmail_participant_reward", {
+              p_email: user.email,
+              p_reward_id: reward.id,
+              p_voucher_code: created.redemptionCode,
+              p_expires_at: expiresAtIso,
+            });
+          }
+        })();
       }
 
       return created;
@@ -876,27 +917,45 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       state.redemptions,
       state.rewards,
       state.session.participantId,
+      state.session.isAnonymous,
       state.stations,
       isSupabaseConfigured,
       user,
     ]
   );
 
-  const markRedemptionRedeemed = useCallback((redemptionId: string) => {
-    const nowIso = new Date().toISOString();
-    setState((prev) => ({
-      ...prev,
-      redemptions: prev.redemptions.map((item) =>
-        item.id === redemptionId
-          ? {
-              ...item,
-              status: "redeemed",
-              redeemedAt: nowIso,
-            }
-          : item
-      ),
-    }));
-  }, []);
+  const markRedemptionRedeemed = useCallback(
+    (redemptionId: string) => {
+      const nowIso = new Date().toISOString();
+      setState((prev) => ({
+        ...prev,
+        redemptions: prev.redemptions.map((item) =>
+          item.id === redemptionId
+            ? {
+                ...item,
+                status: "redeemed",
+                redeemedAt: nowIso,
+              }
+            : item
+        ),
+      }));
+
+      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
+        const supabase = createClientSupabaseClient();
+        void supabase
+          .from("redemptions")
+          .update({ status: "redeemed", redeemed_at: nowIso })
+          .eq("id", redemptionId)
+          .eq("participant_id", state.session.participantId);
+      }
+    },
+    [
+      isSupabaseConfigured,
+      user,
+      state.session.isAnonymous,
+      state.session.participantId,
+    ]
+  );
 
   const resetDemoProgress = useCallback(() => {
     setState((prev) => ({
@@ -906,13 +965,29 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       },
     }));
 
-    if (isSupabaseConfigured && user?.email) {
+    if (isSupabaseConfigured && user && !state.session.isAnonymous) {
       const supabase = createClientSupabaseClient();
-      void supabase.rpc("reset_gmail_participant_progress", {
-        p_email: user.email,
-      });
+      void Promise.all([
+        supabase
+          .from("collected_stamps")
+          .delete()
+          .eq("participant_id", state.session.participantId),
+        supabase
+          .from("participant_badges")
+          .delete()
+          .eq("participant_id", state.session.participantId),
+        supabase
+          .from("redemptions")
+          .delete()
+          .eq("participant_id", state.session.participantId),
+      ]);
     }
-  }, [isSupabaseConfigured, user]);
+  }, [
+    isSupabaseConfigured,
+    user,
+    state.session.isAnonymous,
+    state.session.participantId,
+  ]);
 
   const loadSampleProgress = useCallback(() => {
     const firstTwo = PILOT_STATIONS.slice(0, 2);
@@ -932,25 +1007,24 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       redemptions: [],
     }));
 
-    if (isSupabaseConfigured && user?.email) {
+    if (isSupabaseConfigured && user && !state.session.isAnonymous) {
       const supabase = createClientSupabaseClient();
-      const email = user.email;
-      void (async () => {
-        await supabase.rpc("reset_gmail_participant_progress", {
-          p_email: email,
-        });
-        for (const st of firstTwo) {
-          await supabase.rpc("collect_gmail_participant_stamp", {
-            p_email: email,
-            p_stamp_id: st.stamp.id,
-            p_station_id: st.id,
-            p_nfc_tag_id: st.tag.id,
-            p_award_badge_id: null,
-          });
-        }
-      })();
+      void supabase.from("collected_stamps").upsert(
+        firstTwo.map((st) => ({
+          participant_id: state.session.participantId,
+          stamp_id: st.stamp.id,
+          nfc_tag_id: st.tag.id,
+          source: "nfc" as const,
+        })),
+        { onConflict: "participant_id,stamp_id" }
+      );
     }
-  }, [state.session.participantId, isSupabaseConfigured, user]);
+  }, [
+    state.session.participantId,
+    state.session.isAnonymous,
+    isSupabaseConfigured,
+    user,
+  ]);
 
   const upsertVenue = useCallback((venue: PilotVenue) => {
     setState((prev) => {
@@ -1016,10 +1090,6 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       user,
       authError,
-      isGmailModalOpen,
-      openGmailModal,
-      closeGmailModal,
-      signInWithGmail,
       signInWithGoogle,
       signOut,
       session: state.session,
@@ -1058,10 +1128,6 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated,
       user,
       authError,
-      isGmailModalOpen,
-      openGmailModal,
-      closeGmailModal,
-      signInWithGmail,
       signInWithGoogle,
       signOut,
       state.session,
