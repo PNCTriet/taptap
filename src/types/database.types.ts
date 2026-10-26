@@ -240,6 +240,8 @@ export type Database = {
           id: string;
           auth_user_id: string | null;
           guest_token_hash: string | null;
+          device_token: string | null;
+          email: string | null;
           display_name: string | null;
           locale: SupportedLocale;
           created_at: string;
@@ -249,6 +251,8 @@ export type Database = {
           id?: string;
           auth_user_id?: string | null;
           guest_token_hash?: string | null;
+          device_token?: string | null;
+          email?: string | null;
           display_name?: string | null;
           locale?: SupportedLocale;
           created_at?: string;
@@ -258,6 +262,8 @@ export type Database = {
           id?: string;
           auth_user_id?: string | null;
           guest_token_hash?: string | null;
+          device_token?: string | null;
+          email?: string | null;
           display_name?: string | null;
           locale?: SupportedLocale;
           created_at?: string;
@@ -414,7 +420,47 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      upsert_gmail_participant: {
+        Args: {
+          p_email: string;
+          p_display_name?: string | null;
+          p_device_token?: string | null;
+        };
+        Returns: Json;
+      };
+      get_gmail_participant_passport: {
+        Args: {
+          p_email: string;
+        };
+        Returns: Json;
+      };
+      collect_gmail_participant_stamp: {
+        Args: {
+          p_email: string;
+          p_stamp_id: string;
+          p_station_id: string;
+          p_nfc_tag_id?: string | null;
+          p_award_badge_id?: string | null;
+        };
+        Returns: Json;
+      };
+      claim_gmail_participant_reward: {
+        Args: {
+          p_email: string;
+          p_reward_id: string;
+          p_voucher_code: string;
+          p_expires_at: string;
+        };
+        Returns: Json;
+      };
+      reset_gmail_participant_progress: {
+        Args: {
+          p_email: string;
+        };
+        Returns: Json;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
