@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { User } from "@supabase/supabase-js";
+import { mapSupabaseUser } from "@/context/explorer-context";
 import {
   getEnvStatus,
   getPublicEnv,
@@ -61,7 +63,7 @@ describe("Environment Validation (src/lib/env.ts)", () => {
   });
 });
 
-describe("OAuth Callback Next-Path Sanitizer (src/app/auth/callback/route.ts)", () => {
+describe("Supabase Google OAuth User Profile Mapping & Next-Path Sanitizer", () => {
   it("allows safe internal relative paths and rejects open redirects", () => {
     expect(sanitizeNextPath("/s/tcv-k9x2m4p8")).toBe("/s/tcv-k9x2m4p8");
     expect(sanitizeNextPath("/passport")).toBe("/passport");
@@ -69,6 +71,26 @@ describe("OAuth Callback Next-Path Sanitizer (src/app/auth/callback/route.ts)", 
     expect(sanitizeNextPath("//evil.example.com")).toBe("/passport");
     expect(sanitizeNextPath("https://evil.example.com")).toBe("/passport");
     expect(sanitizeNextPath("/\\evil.example.com")).toBe("/passport");
+  });
+
+  it("maps a Supabase Auth Google OAuth User into an AuthUserProfile", () => {
+    const mockUser = {
+      id: "99999999-9999-4999-8999-999999999901",
+      email: "visitor.saigonzoo@gmail.com",
+      user_metadata: {
+        full_name: "Saigon Zoo Visitor",
+        avatar_url: "https://example.com/avatar.png",
+      },
+    } as unknown as User;
+
+    const profile = mapSupabaseUser(mockUser);
+    expect(profile).toEqual({
+      id: "99999999-9999-4999-8999-999999999901",
+      email: "visitor.saigonzoo@gmail.com",
+      name: "Saigon Zoo Visitor",
+      displayName: "Saigon Zoo Visitor",
+      avatarUrl: "https://example.com/avatar.png",
+    });
   });
 });
 
