@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { getEnvStatus } from "@/lib/env";
+import { AppIcon } from "@/components/ui/app-icon";
 
 export default function HealthPage() {
   const envStatus = getEnvStatus();
@@ -40,7 +41,7 @@ export default function HealthPage() {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E7F6F0] px-3 py-1 text-xs font-extrabold text-[#1B7F5C]">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+              <AppIcon icon={CheckCircle2} size="xs" />
               System Healthy • HTTP 200
             </span>
             <h1 className="font-display-serif text-3xl font-extrabold text-[#272E2B] mt-2">
@@ -61,7 +62,7 @@ export default function HealthPage() {
 
         {/* Mode Banner */}
         <div className="rounded-2xl border border-[#176B61]/30 bg-[#E6F3F1]/60 p-4 flex items-start gap-3">
-          <Database className="h-5 w-5 text-[#176B61] shrink-0 mt-0.5" />
+          <AppIcon icon={Database} size="md" className="text-[#176B61] mt-0.5" />
           <div className="text-xs space-y-1">
             <p className="font-extrabold text-[#272E2B]">
               Runtime Data Mode:{" "}
@@ -107,7 +108,7 @@ export default function HealthPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div className="rounded-2xl border border-[#E6DECB] bg-white p-4 space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[#176B61]">
-              <ShieldCheck className="h-4 w-4" />
+              <AppIcon icon={ShieldCheck} size="sm" />
               <span>Row Level Security (RLS)</span>
             </div>
             <p className="text-xs text-[#525D58]">
@@ -119,7 +120,7 @@ export default function HealthPage() {
 
           <div className="rounded-2xl border border-[#E6DECB] bg-white p-4 space-y-1.5">
             <div className="flex items-center gap-2 text-xs font-extrabold text-[#F07861]">
-              <FileCode2 className="h-4 w-4" />
+              <AppIcon icon={FileCode2} size="sm" />
               <span>Server-Only Isolation</span>
             </div>
             <p className="text-xs text-[#525D58]">
@@ -131,8 +132,8 @@ export default function HealthPage() {
 
         <div className="pt-2 flex items-center justify-between text-xs text-[#78847E]">
           <span className="inline-flex items-center gap-1">
-            <Sparkles className="h-3.5 w-3.5 text-[#F2C653]" />
-            TAPTAP • HOWLSLAB
+            <AppIcon icon={Sparkles} size="xs" className="text-[#F2C653]" />
+            TAPTAP • Saigon Zoo
           </span>
           <Link href="/" className="font-extrabold text-[#176B61] hover:underline">
             Return to Explore →

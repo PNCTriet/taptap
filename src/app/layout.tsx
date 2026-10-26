@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Fraunces, Nunito_Sans } from "next/font/google";
+import { Fraunces, JetBrains_Mono, Nunito_Sans } from "next/font/google";
+import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { ExplorerProvider } from "@/context/explorer-context";
 import { NavigationShell } from "@/components/navigation";
@@ -18,10 +19,17 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin", "vietnamese"],
+  weight: ["500", "600", "700"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "TAPTAP — Tap. Explore. Collect.",
   description:
-    "NFC-powered digital stamp collection passport by HOWLSLAB. Explore venues, tap checkpoints, and collect commemorative stamps.",
+    "NFC-powered digital stamp collection passport and live GPS trail map at Saigon Zoo.",
 };
 
 export default function RootLayout({
@@ -30,7 +38,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${nunitoSans.variable} ${fraunces.variable}`}>
+    <html
+      lang="en"
+      className={`${nunitoSans.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
+    >
       <body className="antialiased selection:bg-[#176B61] selection:text-white">
         <ExplorerProvider>
           <NavigationShell>{children}</NavigationShell>

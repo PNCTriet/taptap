@@ -130,6 +130,8 @@ export type Database = {
           description: string | null;
           image_url: string | null;
           location_hint: string | null;
+          latitude: number | null;
+          longitude: number | null;
           status: StationStatus;
           created_at: string;
           updated_at: string;
@@ -142,6 +144,8 @@ export type Database = {
           description?: string | null;
           image_url?: string | null;
           location_hint?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           status?: StationStatus;
           created_at?: string;
           updated_at?: string;
@@ -154,6 +158,8 @@ export type Database = {
           description?: string | null;
           image_url?: string | null;
           location_hint?: string | null;
+          latitude?: number | null;
+          longitude?: number | null;
           status?: StationStatus;
           created_at?: string;
           updated_at?: string;

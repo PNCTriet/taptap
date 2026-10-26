@@ -70,6 +70,8 @@ create table if not exists public.stations (
   description text,
   image_url text,
   location_hint text,
+  latitude double precision,
+  longitude double precision,
   status text not null default 'active' check (status in ('active', 'maintenance', 'inactive')),
   created_at timestamptz not null default timezone('utc'::text, now()),
   updated_at timestamptz not null default timezone('utc'::text, now()),

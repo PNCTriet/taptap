@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { CheckCircle2, Compass, Lock } from "lucide-react";
+import { CheckCircle2, Lock, MapPin } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import type { PilotStation, StampVisualState } from "@/types/domain";
+import { StationIllustration } from "@/components/station-artwork";
+import { AppIcon } from "@/components/ui/app-icon";
 
 interface StampCardProps {
   station: PilotStation;
@@ -13,6 +15,7 @@ interface StampCardProps {
   collectedAt?: string;
   animatePress?: boolean;
   showTapLink?: boolean;
+  distanceLabel?: string | null;
 }
 
 const ACCENT_BORDER: Record<PilotStation["stamp"]["accentColor"], string> = {
@@ -28,9 +31,9 @@ export function StampCard({
   collectedAt,
   animatePress = false,
   showTapLink = true,
+  distanceLabel,
 }: StampCardProps) {
   const { locale, t } = useExplorer();
-  const [imageError, setImageError] = useState(false);
 
   const isCollected = state === "collected";
   const isLocked = state === "locked";
@@ -46,35 +49,39 @@ export function StampCard({
 
   const content = (
     <div
-      className={`group relative rounded-[20px] p-2.5 transition-all duration-200 ${
+      data-testid={`stamp-card-${station.id}`}
+      className={`animate-card-enter group relative rounded-[20px] p-2.5 transition-all duration-200 active:scale-[0.97] ${
         isCollected
-          ? "bg-white border-2 border-[#176B61]/35 shadow-sm"
+          ? "bg-white border-2 border-[#176B61]/35 shadow-sm hover:-translate-y-0.5"
           : isFeatured
           ? "bg-white border-2 border-[#F2C653] shadow-md"
           : isLocked
           ? "bg-[#F5EFE2]/70 border border-dashed border-[#CFC4AB]"
-          : "bg-white border border-[#E6DECB] shadow-xs"
+          : "bg-white border border-[#E6DECB] shadow-xs hover:border-[#176B61]/40"
       } ${animatePress ? "animate-stamp-press" : ""}`}
     >
       <div className="rounded-[14px] border border-dashed border-[#CFC4AB] bg-[#FFFDF8] p-2">
-        {/* Photo Frame (4:3 Aspect Ratio) */}
+        {/* Cohesive Animal Illustration Frame (4:3 Aspect Ratio) */}
         <div
           className={`relative overflow-hidden rounded-[10px] border ${
             isCollected || isFeatured ? borderClass : "border-[#E6DECB]"
           } bg-[#F5EFE2] aspect-[4/3] flex items-center justify-center`}
         >
-          {!imageError ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={station.stamp.imageUrl}
-              alt={t(station.name)}
-              onError={() => setImageError(true)}
-              className={`h-full w-full object-cover transition-transform duration-300 ${
-                isLocked ? "grayscale opacity-55" : ""
-              }`}
-            />
-          ) : (
-            <Compass className="h-7 w-7 text-[#176B61]" />
+          <StationIllustration
+            stationIdOrSlug={station.id}
+            variant="stamp"
+            grayscale={isLocked}
+            className="h-full w-full transition-transform duration-300 group-hover:scale-105"
+          />
+
+          {/* Live GPS Distance Badge */}
+          {distanceLabel && (
+            <div className="pointer-events-none absolute top-2 left-2">
+              <span className="type-mono inline-flex items-center gap-1 rounded-full bg-[#272E2B]/80 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-xs">
+                <AppIcon icon={MapPin} size="xs" className="text-[#F2C653]" />
+                {distanceLabel}
+              </span>
+            </div>
           )}
 
           {/* Postmark Seal when Collected */}
@@ -91,7 +98,7 @@ export function StampCard({
                   animatePress ? "animate-postmark" : ""
                 }`}
               >
-                <span className="font-mono text-[10px] font-extrabold uppercase tracking-wider text-[#176B61]">
+                <span className="type-mono text-[10px] font-extrabold uppercase tracking-wider text-[#176B61]">
                   STAMPED
                 </span>
               </div>
@@ -107,16 +114,16 @@ export function StampCard({
 
           {isCollected ? (
             <span className="shrink-0 inline-flex items-center gap-1 text-xs font-extrabold text-[#1B7F5C]">
-              <CheckCircle2 className="h-3.5 w-3.5" />
+              <AppIcon icon={CheckCircle2} size="xs" />
               <span>{formattedDate ?? (locale === "vi" ? "Đã đóng" : "Done")}</span>
             </span>
           ) : isLocked ? (
             <span className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-[#78847E]">
-              <Lock className="h-3 w-3" />
-              <span>#{station.stamp.sortOrder}</span>
+              <AppIcon icon={Lock} size="xs" />
+              <span className="type-mono">#{station.stamp.sortOrder}</span>
             </span>
           ) : (
-            <span className="shrink-0 font-mono text-xs font-bold text-[#176B61]">
+            <span className="type-mono shrink-0 text-xs font-bold text-[#176B61]">
               NFC #{station.stamp.sortOrder}
             </span>
           )}
