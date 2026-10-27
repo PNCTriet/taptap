@@ -66,6 +66,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Documentation Index
 
+- 🌟 **[`docs/TAPTAP-PRODUCT-AND-UI-SPECIFICATION.md`](./docs/TAPTAP-PRODUCT-AND-UI-SPECIFICATION.md)** — **Full Mobile UI Visual Showcase (12 Retina Screenshots) & Comprehensive Product/Technical Specification (VI/EN)**.
 - [`docs/architecture.md`](./docs/architecture.md) — System architecture, separation of `stations` vs `nfc_tags`, unified NFC/QR URLs, physical presence considerations, and Swift/SwiftUI iOS readiness.
 - [`docs/data-model.md`](./docs/data-model.md) — Entity-Relationship overview, all 11 core tables + `venue_admins`, status enums, and foreign key deletion rules.
 - [`docs/anonymous-participation.md`](./docs/anonymous-participation.md) — Frictionless anonymous participation strategy, Supabase Anonymous Auth vs signed guest tokens, and account linking.
