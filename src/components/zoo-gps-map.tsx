@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   Compass,
   Footprints,
+  Layers,
+  Loader2,
   LocateFixed,
   MapPin,
   Navigation as NavigationIcon,
@@ -34,9 +36,18 @@ export interface ZooGpsMapProps {
   onDistancesChange?: (distances: Record<string, number>) => void;
 }
 
+type MapTileStyle = "roadmap" | "satellite";
+
 interface UserGpsState extends GeoPoint {
   accuracy: number;
   mode: "live" | "demo";
+  source: "live" | "demo";
+}
+
+function getGoogleMapsTileUrl(style: MapTileStyle, locale: string): string {
+  const hl = locale === "vi" ? "vi" : "en";
+  const lyrs = style === "satellite" ? "y" : "m";
+  return `https://mt{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}&hl=${hl}`;
 }
 
 export function ZooGpsMap({
@@ -64,15 +75,16 @@ export function ZooGpsMap({
     }
   );
 
+  const [mapStyle, setMapStyle] = React.useState<MapTileStyle>("roadmap");
   const [userGps, setUserGps] = React.useState<UserGpsState | null>(null);
-  const [gpsStatusMessage, setGpsStatusMessage] = React.useState<string | null>(
-    null
-  );
+  const [isLocating, setIsLocating] = React.useState(false);
+  const [gpsError, setGpsError] = React.useState<string | null>(null);
   const [isDemoWalking, setIsDemoWalking] = React.useState(false);
 
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
   const leafletRef = React.useRef<typeof LeafletNamespace | null>(null);
   const mapInstanceRef = React.useRef<LeafletNamespace.Map | null>(null);
+  const tileLayerRef = React.useRef<LeafletNamespace.TileLayer | null>(null);
   const stationMarkersRef = React.useRef<
     Map<string, LeafletNamespace.Marker>
   >(new Map());
@@ -82,6 +94,9 @@ export function ZooGpsMap({
   );
   const walkingLineRef = React.useRef<LeafletNamespace.Polyline | null>(null);
   const watchIdRef = React.useRef<number | null>(null);
+  const shouldCenterOnNextFixRef = React.useRef<boolean>(false);
+  const hasRetriedLowAccuracyRef = React.useRef<boolean>(false);
+  const prevSelectedStationIdRef = React.useRef<string>(selectedStationId);
 
   const selectedStation = React.useMemo(() => {
     return (
@@ -121,9 +136,32 @@ export function ZooGpsMap({
     );
   }, [userGps]);
 
+  const focusMapOnCoords = React.useCallback(
+    (lat: number, lng: number, zoom: number) => {
+      if (typeof window === "undefined") return;
+      const runViewUpdate = () => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        map.invalidateSize({ pan: false, animate: false });
+        map.setView([lat, lng], zoom, {
+          animate: true,
+          duration: 0.45,
+        });
+      };
+
+      window.requestAnimationFrame(() => {
+        runViewUpdate();
+        window.setTimeout(runViewUpdate, 80);
+      });
+    },
+    []
+  );
+
   // Initialize Leaflet Map once on client
   React.useEffect(() => {
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+    let initialInvalidateTimer: number | null = null;
 
     async function initMap() {
       if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -139,17 +177,61 @@ export function ZooGpsMap({
         attributionControl: false,
       });
 
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        {
-          maxZoom: 20,
-          subdomains: "abcd",
-        }
-      ).addTo(map);
+      const tileLayer = L.tileLayer(getGoogleMapsTileUrl(mapStyle, locale), {
+        subdomains: ["0", "1", "2", "3"],
+        maxZoom: 21,
+        attribution: "&copy; Google Maps",
+      }).addTo(map);
+
+      tileLayerRef.current = tileLayer;
 
       if (!compact) {
         L.control.zoom({ position: "bottomright" }).addTo(map);
       }
+
+      // Saigon Zoo & Botanical Gardens (Thảo Cầm Viên Sài Gòn) canopy & park boundary highlight
+      const zooParkBoundary: [number, number][] = [
+        [10.7864, 106.7042],
+        [10.7863, 106.7057],
+        [10.7874, 106.7069],
+        [10.7893, 106.7068],
+        [10.7902, 106.7058],
+        [10.7901, 106.7044],
+        [10.7885, 106.7039],
+      ];
+
+      L.polygon(zooParkBoundary, {
+        color: "#176B61",
+        weight: 1.75,
+        opacity: 0.42,
+        dashArray: "6 6",
+        fillColor: "#176B61",
+        fillOpacity: 0.06,
+        interactive: false,
+      }).addTo(map);
+
+      // Botanical Conservatory & central canopy soft circle
+      L.circle([SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng], {
+        radius: 175,
+        color: "#176B61",
+        weight: 1,
+        opacity: 0.25,
+        dashArray: "4 6",
+        fillColor: "#176B61",
+        fillOpacity: 0.06,
+        interactive: false,
+      }).addTo(map);
+
+      // Flamingo Lagoon water highlight near station #3 (10.7886, 106.7061)
+      L.circle([10.7886, 106.7061], {
+        radius: 48,
+        color: "#4D73CF",
+        weight: 1.25,
+        opacity: 0.35,
+        fillColor: "#4D73CF",
+        fillOpacity: 0.12,
+        interactive: false,
+      }).addTo(map);
 
       const trailCoords: [number, number][] = sortedStations.map((st) => [
         st.latitude,
@@ -158,10 +240,22 @@ export function ZooGpsMap({
 
       if (trailCoords.length > 1) {
         L.polyline(trailCoords, {
+          color: "#FFFDF8",
+          weight: 6.5,
+          opacity: 0.85,
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(map);
+
+        L.polyline(trailCoords, {
           color: "#176B61",
           weight: 3.5,
-          opacity: 0.5,
+          opacity: 0.72,
           dashArray: "8 8",
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
         }).addTo(map);
       }
 
@@ -187,6 +281,17 @@ export function ZooGpsMap({
 
         stationMarkersRef.current.set(st.id, marker);
       }
+
+      if (typeof ResizeObserver !== "undefined" && mapContainerRef.current) {
+        resizeObserver = new ResizeObserver(() => {
+          map.invalidateSize({ pan: false, animate: false });
+        });
+        resizeObserver.observe(mapContainerRef.current);
+      }
+
+      initialInvalidateTimer = window.setTimeout(() => {
+        map.invalidateSize({ pan: false, animate: false });
+      }, 120);
     }
 
     const markersMap = stationMarkersRef.current;
@@ -194,6 +299,12 @@ export function ZooGpsMap({
 
     return () => {
       cancelled = true;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (initialInvalidateTimer !== null) {
+        window.clearTimeout(initialInvalidateTimer);
+      }
       if (watchIdRef.current !== null && "geolocation" in navigator) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
@@ -201,10 +312,17 @@ export function ZooGpsMap({
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      tileLayerRef.current = null;
       markersMap.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Dynamically switch Google Maps tile layer URL when mapStyle or locale changes
+  React.useEffect(() => {
+    if (!tileLayerRef.current) return;
+    tileLayerRef.current.setUrl(getGoogleMapsTileUrl(mapStyle, locale));
+  }, [mapStyle, locale]);
 
   // Update station pin icons whenever selectedStationId or collected state changes
   React.useEffect(() => {
@@ -229,7 +347,11 @@ export function ZooGpsMap({
       marker.setIcon(icon);
     }
 
-    if (selectedStation) {
+    if (
+      selectedStation &&
+      prevSelectedStationIdRef.current !== selectedStationId
+    ) {
+      prevSelectedStationIdRef.current = selectedStationId;
       map.panTo([selectedStation.latitude, selectedStation.longitude], {
         animate: true,
         duration: 0.45,
@@ -298,7 +420,7 @@ export function ZooGpsMap({
       );
     }
 
-    if (selectedStation && (distanceToZooCenter ?? 0) < 3000) {
+    if (selectedStation) {
       const coords: [number, number][] = [
         [userGps.lat, userGps.lng],
         [selectedStation.latitude, selectedStation.longitude],
@@ -317,16 +439,21 @@ export function ZooGpsMap({
       walkingLineRef.current.remove();
       walkingLineRef.current = null;
     }
-  }, [userGps, selectedStation, distanceToZooCenter]);
+  }, [userGps, selectedStation]);
 
   // Demo Walk simulator (updates user GPS along Saigon Zoo trail every 1000ms)
   React.useEffect(() => {
     if (!isDemoWalking) return;
 
+    setIsLocating(false);
+    setGpsError(null);
+
     if (watchIdRef.current !== null && "geolocation" in navigator) {
       navigator.geolocation.clearWatch(watchIdRef.current);
       watchIdRef.current = null;
     }
+
+    focusMapOnCoords(SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng, 17);
 
     let stepIndex = 0;
     const applyStep = (idx: number) => {
@@ -338,6 +465,7 @@ export function ZooGpsMap({
         lng: pt.lng,
         accuracy: 12,
         mode: "demo",
+        source: "demo",
       });
 
       let nearestId = selectedStationId;
@@ -369,65 +497,169 @@ export function ZooGpsMap({
 
   const handleStartLiveGps = () => {
     setIsDemoWalking(false);
-    setGpsStatusMessage(null);
+    setGpsError(null);
+    shouldCenterOnNextFixRef.current = true;
+    hasRetriedLowAccuracyRef.current = false;
+
+    if (userGps?.source === "live") {
+      focusMapOnCoords(userGps.lat, userGps.lng, 16);
+    }
 
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
-      setGpsStatusMessage(
+      setIsLocating(false);
+      setGpsError(
         locale === "vi"
-          ? "Thiết bị không hỗ trợ GPS. Hãy thử Giả lập đi bộ."
-          : "GPS unavailable on this device. Try Demo Walk."
+          ? "Không lấy được tín hiệu định vị từ thiết bị/macOS (kiểm tra System Settings → Privacy & Security → Location Services)."
+          : "Could not acquire location signal from device/macOS (check System Settings → Privacy & Security → Location Services)."
       );
       return;
     }
 
+    setIsLocating(true);
+
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
     }
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const nextGps: UserGpsState = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          accuracy: Math.round(pos.coords.accuracy || 15),
-          mode: "live",
-        };
-        setUserGps(nextGps);
+    const applyLivePosition = (pos: GeolocationPosition) => {
+      setIsLocating(false);
+      setGpsError(null);
 
-        const distFromZoo = calculateDistanceMeters(
+      const nextGps: UserGpsState = {
+        lat: pos.coords.latitude,
+        lng: pos.coords.longitude,
+        accuracy: Math.round(pos.coords.accuracy || 15),
+        mode: "live",
+        source: "live",
+      };
+      setUserGps(nextGps);
+
+      const distFromZoo = calculateDistanceMeters(
+        nextGps.lat,
+        nextGps.lng,
+        SAIGON_ZOO_CENTER.lat,
+        SAIGON_ZOO_CENTER.lng
+      );
+
+      if (shouldCenterOnNextFixRef.current) {
+        shouldCenterOnNextFixRef.current = false;
+        focusMapOnCoords(
           nextGps.lat,
           nextGps.lng,
-          SAIGON_ZOO_CENTER.lat,
-          SAIGON_ZOO_CENTER.lng
+          distFromZoo <= 1500 ? 17 : 16
+        );
+      }
+    };
+
+    const setFinalGeolocationError = (error: GeolocationPositionError) => {
+      setIsLocating(false);
+      if (error.code === 1) {
+        setGpsError(
+          locale === "vi"
+            ? "Trình duyệt hoặc macOS đang chặn quyền Vị trí. Hãy bật quyền Location cho trình duyệt trên thanh địa chỉ hoặc System Settings rồi bấm lại Vị trí của tôi."
+            : "Location access is blocked by your browser or macOS. Please allow Location permission in the address bar or System Settings, then tap Locate me again."
+        );
+      } else {
+        setGpsError(
+          locale === "vi"
+            ? "Không lấy được tín hiệu định vị từ thiết bị/macOS (kiểm tra System Settings → Privacy & Security → Location Services)."
+            : "Could not acquire location signal from device/macOS (check System Settings → Privacy & Security → Location Services)."
+        );
+      }
+    };
+
+    const handleTier1Error = (error: GeolocationPositionError) => {
+      if (error.code === 1) {
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
+        setFinalGeolocationError(error);
+        return;
+      }
+
+      if (
+        (error.code === 2 || error.code === 3) &&
+        !hasRetriedLowAccuracyRef.current
+      ) {
+        hasRetriedLowAccuracyRef.current = true;
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
+
+        const tier2Options: PositionOptions = {
+          enableHighAccuracy: false,
+          timeout: 12000,
+          maximumAge: 60000,
+        };
+
+        navigator.geolocation.getCurrentPosition(
+          applyLivePosition,
+          setFinalGeolocationError,
+          tier2Options
         );
 
-        if (distFromZoo <= 2000 && mapInstanceRef.current) {
-          mapInstanceRef.current.flyTo([nextGps.lat, nextGps.lng], 17, {
-            duration: 0.6,
-          });
-        }
-      },
-      () => {
-        setGpsStatusMessage(
-          locale === "vi"
-            ? "Chưa cấp quyền vị trí. Đang bật Giả lập đi bộ."
-            : "Location permission denied. Using Demo Walk instead."
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          applyLivePosition,
+          setFinalGeolocationError,
+          tier2Options
         );
-        setIsDemoWalking(true);
-      },
+        return;
+      }
+
+      setFinalGeolocationError(error);
+    };
+
+    // Tier 1: High-accuracy GPS + immediate getCurrentPosition
+    navigator.geolocation.getCurrentPosition(
+      applyLivePosition,
+      handleTier1Error,
       {
         enableHighAccuracy: true,
-        maximumAge: 5000,
+        timeout: 6000,
+        maximumAge: 15000,
+      }
+    );
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      applyLivePosition,
+      handleTier1Error,
+      {
+        enableHighAccuracy: true,
         timeout: 10000,
+        maximumAge: 10000,
       }
     );
   };
 
   const handleRecenterZoo = () => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-    map.flyTo([SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng], 17, {
-      duration: 0.6,
+    focusMapOnCoords(SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng, 17);
+  };
+
+  const handleCenterOnUser = () => {
+    if (!userGps) return;
+    focusMapOnCoords(userGps.lat, userGps.lng, 16);
+  };
+
+  const handleFitUserAndZoo = () => {
+    if (!userGps || typeof window === "undefined") return;
+    const runFit = () => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      map.invalidateSize({ pan: false, animate: false });
+      map.fitBounds(
+        [
+          [userGps.lat, userGps.lng],
+          [SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng],
+        ],
+        { padding: [48, 48], maxZoom: 16 }
+      );
+    };
+    window.requestAnimationFrame(() => {
+      runFit();
+      window.setTimeout(runFit, 80);
     });
   };
 
@@ -454,7 +686,7 @@ export function ZooGpsMap({
           </span>
           {userGps && (
             <span className="type-mono rounded-full bg-[#EAF0FB] px-2 py-0.5 text-[10px] font-bold text-[#4D73CF]">
-              {userGps.mode === "demo"
+              {userGps.source === "demo"
                 ? locale === "vi"
                   ? "GPS Giả lập"
                   : "Demo GPS"
@@ -469,13 +701,27 @@ export function ZooGpsMap({
             data-testid="gps-locate-button"
             onClick={handleStartLiveGps}
             className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-extrabold transition-all duration-150 active:scale-[0.97] cursor-pointer ${
-              userGps?.mode === "live"
-                ? "bg-[#4D73CF] text-white shadow-xs"
-                : "border border-[#E6DECB] bg-[#FFF8EB] text-[#272E2B] hover:bg-[#F5EFE2]"
+              isLocating
+                ? "bg-[#4D73CF] text-white shadow-xs animate-pulse"
+                : userGps?.source === "live"
+                  ? "bg-[#4D73CF] text-white shadow-xs"
+                  : "border border-[#E6DECB] bg-[#FFF8EB] text-[#272E2B] hover:bg-[#F5EFE2]"
             }`}
           >
-            <AppIcon icon={LocateFixed} size="xs" />
-            <span>{locale === "vi" ? "Vị trí của tôi" : "Locate me"}</span>
+            <AppIcon
+              icon={isLocating ? Loader2 : LocateFixed}
+              size="xs"
+              className={isLocating ? "animate-spin" : undefined}
+            />
+            <span>
+              {isLocating
+                ? locale === "vi"
+                  ? "Đang định vị…"
+                  : "Locating…"
+                : locale === "vi"
+                  ? "Vị trí của tôi"
+                  : "Locate me"}
+            </span>
           </button>
 
           <button
@@ -514,34 +760,6 @@ export function ZooGpsMap({
           </button>
         </div>
       </div>
-
-      {/* Notice Banner if User is > 2km from Saigon Zoo or GPS message */}
-      {(gpsStatusMessage ||
-        (userGps?.mode === "live" &&
-          distanceToZooCenter !== null &&
-          distanceToZooCenter > 2000)) && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F2C653] bg-[#FDF6DF] px-4 py-2 text-xs font-bold text-[#272E2B]">
-          <span>
-            {gpsStatusMessage ??
-              (locale === "vi"
-                ? `Bạn cách Thảo Cầm Viên ${formatDistance(
-                    distanceToZooCenter ?? 0,
-                    locale
-                  )}.`
-                : `You are ${formatDistance(
-                    distanceToZooCenter ?? 0,
-                    locale
-                  )} from Saigon Zoo.`)}
-          </span>
-          <button
-            type="button"
-            onClick={() => setIsDemoWalking(true)}
-            className="rounded-full bg-[#272E2B] px-2.5 py-0.5 text-[11px] font-extrabold text-white active:scale-[0.97] cursor-pointer"
-          >
-            {locale === "vi" ? "Bật Giả lập đi bộ" : "Start Demo Walk"}
-          </button>
-        </div>
-      )}
 
       {/* Interactive Leaflet Map Canvas */}
       <div className="relative">
@@ -589,7 +807,104 @@ export function ZooGpsMap({
             );
           })}
         </div>
+
+        {/* Google Maps Roadmap / Satellite Toggle Pill (Bottom-Left Overlay) */}
+        <div
+          data-testid="map-style-toggle"
+          className="pointer-events-auto absolute bottom-3 left-3 z-20 inline-flex items-center rounded-full border border-[#E6DECB] bg-white/95 p-0.5 shadow-sm backdrop-blur-md"
+        >
+          <span className="pl-2 pr-1 text-[#525D58]">
+            <AppIcon icon={Layers} size="xs" />
+          </span>
+          <button
+            type="button"
+            data-testid="map-style-roadmap"
+            onClick={() => setMapStyle("roadmap")}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold transition-all cursor-pointer ${
+              mapStyle === "roadmap"
+                ? "bg-[#176B61] text-white shadow-2xs"
+                : "text-[#272E2B] hover:bg-[#F5EFE2]"
+            }`}
+          >
+            {locale === "vi" ? "Bản đồ" : "Map"}
+          </button>
+          <button
+            type="button"
+            data-testid="map-style-satellite"
+            onClick={() => setMapStyle("satellite")}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold transition-all cursor-pointer ${
+              mapStyle === "satellite"
+                ? "bg-[#176B61] text-white shadow-2xs"
+                : "text-[#272E2B] hover:bg-[#F5EFE2]"
+            }`}
+          >
+            {locale === "vi" ? "Vệ tinh" : "Satellite"}
+          </button>
+        </div>
       </div>
+
+      {/* Geolocation Error Banner (below map canvas so map container never shifts) */}
+      {gpsError && (
+        <div
+          data-testid="gps-error-banner"
+          className="flex flex-wrap items-center justify-between gap-2 border-t border-[#DE634C]/40 bg-[#FDECE8] px-4 py-2.5 text-xs font-bold text-[#272E2B]"
+        >
+          <span className="flex-1">{gpsError}</span>
+          <button
+            type="button"
+            onClick={() => setIsDemoWalking(true)}
+            className="rounded-full bg-[#272E2B] px-2.5 py-1 text-[11px] font-extrabold text-white active:scale-[0.97] cursor-pointer"
+          >
+            {locale === "vi" ? "Giả lập đi bộ" : "Demo Walk"}
+          </button>
+        </div>
+      )}
+
+      {/* Amber Quick View Banner if User is > 500m from Saigon Zoo (below map canvas for zero layout shift) */}
+      {userGps &&
+        userGps.source === "live" &&
+        distanceToZooCenter !== null &&
+        distanceToZooCenter > 500 && (
+          <div
+            data-testid="gps-distance-banner"
+            className="flex flex-wrap items-center justify-between gap-2 border-t border-[#F2C653] bg-[#FDF6DF] px-4 py-2 text-xs font-bold text-[#272E2B]"
+          >
+            <span>
+              {locale === "vi"
+                ? `Bạn cách Thảo Cầm Viên ${formatDistance(
+                    distanceToZooCenter,
+                    locale
+                  )}.`
+                : `You are ${formatDistance(
+                    distanceToZooCenter,
+                    locale
+                  )} from Saigon Zoo.`}
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCenterOnUser}
+                className="rounded-full border border-[#E6DECB] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#4D73CF] hover:bg-[#EAF0FB] active:scale-[0.97] cursor-pointer"
+              >
+                {locale === "vi" ? "Vị trí của tôi" : "Center on me"}
+              </button>
+              <button
+                type="button"
+                onClick={handleFitUserAndZoo}
+                className="rounded-full border border-[#E6DECB] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#176B61] hover:bg-[#E6F3F1] active:scale-[0.97] cursor-pointer"
+              >
+                {locale === "vi" ? "Xem cả tôi & TCV" : "Fit Me & Zoo"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDemoWalking(true)}
+                className="rounded-full bg-[#272E2B] px-2.5 py-1 text-[11px] font-extrabold text-white active:scale-[0.97] cursor-pointer"
+              >
+                {locale === "vi" ? "Giả lập đi bộ" : "Demo Walk"}
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* Interactive Bottom Sheet for Selected Station */}
       {selectedStation && (
