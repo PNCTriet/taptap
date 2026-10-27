@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Compass,
   Footprints,
+  Layers,
   Loader2,
   LocateFixed,
   MapPin,
@@ -35,10 +36,18 @@ export interface ZooGpsMapProps {
   onDistancesChange?: (distances: Record<string, number>) => void;
 }
 
+type MapTileStyle = "roadmap" | "satellite";
+
 interface UserGpsState extends GeoPoint {
   accuracy: number;
   mode: "live" | "demo";
   source: "live" | "demo";
+}
+
+function getGoogleMapsTileUrl(style: MapTileStyle, locale: string): string {
+  const hl = locale === "vi" ? "vi" : "en";
+  const lyrs = style === "satellite" ? "y" : "m";
+  return `https://mt{s}.google.com/vt/lyrs=${lyrs}&x={x}&y={y}&z={z}&hl=${hl}`;
 }
 
 export function ZooGpsMap({
@@ -66,6 +75,7 @@ export function ZooGpsMap({
     }
   );
 
+  const [mapStyle, setMapStyle] = React.useState<MapTileStyle>("roadmap");
   const [userGps, setUserGps] = React.useState<UserGpsState | null>(null);
   const [isLocating, setIsLocating] = React.useState(false);
   const [gpsError, setGpsError] = React.useState<string | null>(null);
@@ -74,6 +84,7 @@ export function ZooGpsMap({
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
   const leafletRef = React.useRef<typeof LeafletNamespace | null>(null);
   const mapInstanceRef = React.useRef<LeafletNamespace.Map | null>(null);
+  const tileLayerRef = React.useRef<LeafletNamespace.TileLayer | null>(null);
   const stationMarkersRef = React.useRef<
     Map<string, LeafletNamespace.Marker>
   >(new Map());
@@ -125,9 +136,32 @@ export function ZooGpsMap({
     );
   }, [userGps]);
 
+  const focusMapOnCoords = React.useCallback(
+    (lat: number, lng: number, zoom: number) => {
+      if (typeof window === "undefined") return;
+      const runViewUpdate = () => {
+        const map = mapInstanceRef.current;
+        if (!map) return;
+        map.invalidateSize({ pan: false, animate: false });
+        map.setView([lat, lng], zoom, {
+          animate: true,
+          duration: 0.45,
+        });
+      };
+
+      window.requestAnimationFrame(() => {
+        runViewUpdate();
+        window.setTimeout(runViewUpdate, 80);
+      });
+    },
+    []
+  );
+
   // Initialize Leaflet Map once on client
   React.useEffect(() => {
     let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
+    let initialInvalidateTimer: number | null = null;
 
     async function initMap() {
       if (!mapContainerRef.current || mapInstanceRef.current) return;
@@ -143,10 +177,13 @@ export function ZooGpsMap({
         attributionControl: false,
       });
 
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap",
+      const tileLayer = L.tileLayer(getGoogleMapsTileUrl(mapStyle, locale), {
+        subdomains: ["0", "1", "2", "3"],
+        maxZoom: 21,
+        attribution: "&copy; Google Maps",
       }).addTo(map);
+
+      tileLayerRef.current = tileLayer;
 
       if (!compact) {
         L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -244,6 +281,17 @@ export function ZooGpsMap({
 
         stationMarkersRef.current.set(st.id, marker);
       }
+
+      if (typeof ResizeObserver !== "undefined" && mapContainerRef.current) {
+        resizeObserver = new ResizeObserver(() => {
+          map.invalidateSize({ pan: false, animate: false });
+        });
+        resizeObserver.observe(mapContainerRef.current);
+      }
+
+      initialInvalidateTimer = window.setTimeout(() => {
+        map.invalidateSize({ pan: false, animate: false });
+      }, 120);
     }
 
     const markersMap = stationMarkersRef.current;
@@ -251,6 +299,12 @@ export function ZooGpsMap({
 
     return () => {
       cancelled = true;
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (initialInvalidateTimer !== null) {
+        window.clearTimeout(initialInvalidateTimer);
+      }
       if (watchIdRef.current !== null && "geolocation" in navigator) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
@@ -258,10 +312,17 @@ export function ZooGpsMap({
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      tileLayerRef.current = null;
       markersMap.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Dynamically switch Google Maps tile layer URL when mapStyle or locale changes
+  React.useEffect(() => {
+    if (!tileLayerRef.current) return;
+    tileLayerRef.current.setUrl(getGoogleMapsTileUrl(mapStyle, locale));
+  }, [mapStyle, locale]);
 
   // Update station pin icons whenever selectedStationId or collected state changes
   React.useEffect(() => {
@@ -392,13 +453,7 @@ export function ZooGpsMap({
       watchIdRef.current = null;
     }
 
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo(
-        [SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng],
-        17,
-        { duration: 0.65 }
-      );
-    }
+    focusMapOnCoords(SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng, 17);
 
     let stepIndex = 0;
     const applyStep = (idx: number) => {
@@ -446,10 +501,8 @@ export function ZooGpsMap({
     shouldCenterOnNextFixRef.current = true;
     hasRetriedLowAccuracyRef.current = false;
 
-    if (userGps?.source === "live" && mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([userGps.lat, userGps.lng], 16, {
-        duration: 0.75,
-      });
+    if (userGps?.source === "live") {
+      focusMapOnCoords(userGps.lat, userGps.lng, 16);
     }
 
     if (typeof window === "undefined" || !("geolocation" in navigator)) {
@@ -489,14 +542,12 @@ export function ZooGpsMap({
         SAIGON_ZOO_CENTER.lng
       );
 
-      if (shouldCenterOnNextFixRef.current && mapInstanceRef.current) {
+      if (shouldCenterOnNextFixRef.current) {
         shouldCenterOnNextFixRef.current = false;
-        mapInstanceRef.current.flyTo(
-          [nextGps.lat, nextGps.lng],
-          distFromZoo <= 1500 ? 17 : 16,
-          {
-            duration: 0.75,
-          }
+        focusMapOnCoords(
+          nextGps.lat,
+          nextGps.lng,
+          distFromZoo <= 1500 ? 17 : 16
         );
       }
     };
@@ -584,29 +635,32 @@ export function ZooGpsMap({
   };
 
   const handleRecenterZoo = () => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-    map.flyTo([SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng], 17, {
-      duration: 0.6,
-    });
+    focusMapOnCoords(SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng, 17);
   };
 
   const handleCenterOnUser = () => {
-    if (!userGps || !mapInstanceRef.current) return;
-    mapInstanceRef.current.flyTo([userGps.lat, userGps.lng], 16, {
-      duration: 0.65,
-    });
+    if (!userGps) return;
+    focusMapOnCoords(userGps.lat, userGps.lng, 16);
   };
 
   const handleFitUserAndZoo = () => {
-    if (!userGps || !mapInstanceRef.current) return;
-    mapInstanceRef.current.fitBounds(
-      [
-        [userGps.lat, userGps.lng],
-        [SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng],
-      ],
-      { padding: [48, 48], maxZoom: 16 }
-    );
+    if (!userGps || typeof window === "undefined") return;
+    const runFit = () => {
+      const map = mapInstanceRef.current;
+      if (!map) return;
+      map.invalidateSize({ pan: false, animate: false });
+      map.fitBounds(
+        [
+          [userGps.lat, userGps.lng],
+          [SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng],
+        ],
+        { padding: [48, 48], maxZoom: 16 }
+      );
+    };
+    window.requestAnimationFrame(() => {
+      runFit();
+      window.setTimeout(runFit, 80);
+    });
   };
 
   const selectedDistance = selectedStation
@@ -707,69 +761,6 @@ export function ZooGpsMap({
         </div>
       </div>
 
-      {/* Geolocation Error Banner (never auto-starts Demo Walk) */}
-      {gpsError && (
-        <div
-          data-testid="gps-error-banner"
-          className="flex flex-wrap items-center justify-between gap-2 border-b border-[#DE634C]/40 bg-[#FDECE8] px-4 py-2.5 text-xs font-bold text-[#272E2B]"
-        >
-          <span className="flex-1">{gpsError}</span>
-          <button
-            type="button"
-            onClick={() => setIsDemoWalking(true)}
-            className="rounded-full bg-[#272E2B] px-2.5 py-1 text-[11px] font-extrabold text-white active:scale-[0.97] cursor-pointer"
-          >
-            {locale === "vi" ? "Giả lập đi bộ" : "Demo Walk"}
-          </button>
-        </div>
-      )}
-
-      {/* Amber Quick View Banner if User is > 500m from Saigon Zoo */}
-      {userGps &&
-        userGps.source === "live" &&
-        distanceToZooCenter !== null &&
-        distanceToZooCenter > 500 && (
-          <div
-            data-testid="gps-distance-banner"
-            className="flex flex-wrap items-center justify-between gap-2 border-b border-[#F2C653] bg-[#FDF6DF] px-4 py-2 text-xs font-bold text-[#272E2B]"
-          >
-            <span>
-              {locale === "vi"
-                ? `Bạn cách Thảo Cầm Viên ${formatDistance(
-                    distanceToZooCenter,
-                    locale
-                  )}.`
-                : `You are ${formatDistance(
-                    distanceToZooCenter,
-                    locale
-                  )} from Saigon Zoo.`}
-            </span>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleCenterOnUser}
-                className="rounded-full border border-[#E6DECB] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#4D73CF] hover:bg-[#EAF0FB] active:scale-[0.97] cursor-pointer"
-              >
-                {locale === "vi" ? "Vị trí của tôi" : "Center on me"}
-              </button>
-              <button
-                type="button"
-                onClick={handleFitUserAndZoo}
-                className="rounded-full border border-[#E6DECB] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#176B61] hover:bg-[#E6F3F1] active:scale-[0.97] cursor-pointer"
-              >
-                {locale === "vi" ? "Xem cả tôi & TCV" : "Fit Me & Zoo"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsDemoWalking(true)}
-                className="rounded-full bg-[#272E2B] px-2.5 py-1 text-[11px] font-extrabold text-white active:scale-[0.97] cursor-pointer"
-              >
-                {locale === "vi" ? "Giả lập đi bộ" : "Demo Walk"}
-              </button>
-            </div>
-          </div>
-        )}
-
       {/* Interactive Leaflet Map Canvas */}
       <div className="relative">
         <div
@@ -816,7 +807,104 @@ export function ZooGpsMap({
             );
           })}
         </div>
+
+        {/* Google Maps Roadmap / Satellite Toggle Pill (Bottom-Left Overlay) */}
+        <div
+          data-testid="map-style-toggle"
+          className="pointer-events-auto absolute bottom-3 left-3 z-20 inline-flex items-center rounded-full border border-[#E6DECB] bg-white/95 p-0.5 shadow-sm backdrop-blur-md"
+        >
+          <span className="pl-2 pr-1 text-[#525D58]">
+            <AppIcon icon={Layers} size="xs" />
+          </span>
+          <button
+            type="button"
+            data-testid="map-style-roadmap"
+            onClick={() => setMapStyle("roadmap")}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold transition-all cursor-pointer ${
+              mapStyle === "roadmap"
+                ? "bg-[#176B61] text-white shadow-2xs"
+                : "text-[#272E2B] hover:bg-[#F5EFE2]"
+            }`}
+          >
+            {locale === "vi" ? "Bản đồ" : "Map"}
+          </button>
+          <button
+            type="button"
+            data-testid="map-style-satellite"
+            onClick={() => setMapStyle("satellite")}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold transition-all cursor-pointer ${
+              mapStyle === "satellite"
+                ? "bg-[#176B61] text-white shadow-2xs"
+                : "text-[#272E2B] hover:bg-[#F5EFE2]"
+            }`}
+          >
+            {locale === "vi" ? "Vệ tinh" : "Satellite"}
+          </button>
+        </div>
       </div>
+
+      {/* Geolocation Error Banner (below map canvas so map container never shifts) */}
+      {gpsError && (
+        <div
+          data-testid="gps-error-banner"
+          className="flex flex-wrap items-center justify-between gap-2 border-t border-[#DE634C]/40 bg-[#FDECE8] px-4 py-2.5 text-xs font-bold text-[#272E2B]"
+        >
+          <span className="flex-1">{gpsError}</span>
+          <button
+            type="button"
+            onClick={() => setIsDemoWalking(true)}
+            className="rounded-full bg-[#272E2B] px-2.5 py-1 text-[11px] font-extrabold text-white active:scale-[0.97] cursor-pointer"
+          >
+            {locale === "vi" ? "Giả lập đi bộ" : "Demo Walk"}
+          </button>
+        </div>
+      )}
+
+      {/* Amber Quick View Banner if User is > 500m from Saigon Zoo (below map canvas for zero layout shift) */}
+      {userGps &&
+        userGps.source === "live" &&
+        distanceToZooCenter !== null &&
+        distanceToZooCenter > 500 && (
+          <div
+            data-testid="gps-distance-banner"
+            className="flex flex-wrap items-center justify-between gap-2 border-t border-[#F2C653] bg-[#FDF6DF] px-4 py-2 text-xs font-bold text-[#272E2B]"
+          >
+            <span>
+              {locale === "vi"
+                ? `Bạn cách Thảo Cầm Viên ${formatDistance(
+                    distanceToZooCenter,
+                    locale
+                  )}.`
+                : `You are ${formatDistance(
+                    distanceToZooCenter,
+                    locale
+                  )} from Saigon Zoo.`}
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleCenterOnUser}
+                className="rounded-full border border-[#E6DECB] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#4D73CF] hover:bg-[#EAF0FB] active:scale-[0.97] cursor-pointer"
+              >
+                {locale === "vi" ? "Vị trí của tôi" : "Center on me"}
+              </button>
+              <button
+                type="button"
+                onClick={handleFitUserAndZoo}
+                className="rounded-full border border-[#E6DECB] bg-white px-2.5 py-1 text-[11px] font-extrabold text-[#176B61] hover:bg-[#E6F3F1] active:scale-[0.97] cursor-pointer"
+              >
+                {locale === "vi" ? "Xem cả tôi & TCV" : "Fit Me & Zoo"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsDemoWalking(true)}
+                className="rounded-full bg-[#272E2B] px-2.5 py-1 text-[11px] font-extrabold text-white active:scale-[0.97] cursor-pointer"
+              >
+                {locale === "vi" ? "Giả lập đi bộ" : "Demo Walk"}
+              </button>
+            </div>
+          </div>
+        )}
 
       {/* Interactive Bottom Sheet for Selected Station */}
       {selectedStation && (

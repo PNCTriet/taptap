@@ -271,9 +271,6 @@ body {
   z-index: 10;
 }
 
-.leaflet-tile-pane {
-  filter: saturate(0.88) contrast(0.98) brightness(1.02);
-}
 
 .leaflet-div-icon {
   background: transparent !important;
