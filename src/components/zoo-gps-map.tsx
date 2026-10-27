@@ -139,17 +139,58 @@ export function ZooGpsMap({
         attributionControl: false,
       });
 
-      L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-        {
-          maxZoom: 20,
-          subdomains: "abcd",
-        }
-      ).addTo(map);
+      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap",
+      }).addTo(map);
 
       if (!compact) {
         L.control.zoom({ position: "bottomright" }).addTo(map);
       }
+
+      // Saigon Zoo & Botanical Gardens (Thảo Cầm Viên Sài Gòn) canopy & park boundary highlight
+      const zooParkBoundary: [number, number][] = [
+        [10.7864, 106.7042],
+        [10.7863, 106.7057],
+        [10.7874, 106.7069],
+        [10.7893, 106.7068],
+        [10.7902, 106.7058],
+        [10.7901, 106.7044],
+        [10.7885, 106.7039],
+      ];
+
+      L.polygon(zooParkBoundary, {
+        color: "#176B61",
+        weight: 1.75,
+        opacity: 0.42,
+        dashArray: "6 6",
+        fillColor: "#176B61",
+        fillOpacity: 0.06,
+        interactive: false,
+      }).addTo(map);
+
+      // Botanical Conservatory & central canopy soft circle
+      L.circle([SAIGON_ZOO_CENTER.lat, SAIGON_ZOO_CENTER.lng], {
+        radius: 175,
+        color: "#176B61",
+        weight: 1,
+        opacity: 0.25,
+        dashArray: "4 6",
+        fillColor: "#176B61",
+        fillOpacity: 0.06,
+        interactive: false,
+      }).addTo(map);
+
+      // Flamingo Lagoon water highlight near station #3 (10.7886, 106.7061)
+      L.circle([10.7886, 106.7061], {
+        radius: 48,
+        color: "#4D73CF",
+        weight: 1.25,
+        opacity: 0.35,
+        fillColor: "#4D73CF",
+        fillOpacity: 0.12,
+        interactive: false,
+      }).addTo(map);
 
       const trailCoords: [number, number][] = sortedStations.map((st) => [
         st.latitude,
@@ -158,10 +199,22 @@ export function ZooGpsMap({
 
       if (trailCoords.length > 1) {
         L.polyline(trailCoords, {
+          color: "#FFFDF8",
+          weight: 6.5,
+          opacity: 0.85,
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
+        }).addTo(map);
+
+        L.polyline(trailCoords, {
           color: "#176B61",
           weight: 3.5,
-          opacity: 0.5,
+          opacity: 0.72,
           dashArray: "8 8",
+          lineCap: "round",
+          lineJoin: "round",
+          interactive: false,
         }).addTo(map);
       }
 

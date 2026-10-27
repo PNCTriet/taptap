@@ -15,7 +15,7 @@ export interface GeoCoordinates {
  */
 export const SAIGON_ZOO_CENTER: GeoCoordinates = {
   lat: 10.7883,
-  lng: 106.7054,
+  lng: 106.7053,
 };
 
 /**

@@ -267,8 +267,12 @@ body {
 /* Leaflet map container overrides */
 .leaflet-container {
   font-family: var(--font-sans);
-  background-color: #e6f3f1;
+  background-color: #ebf3ec;
   z-index: 10;
+}
+
+.leaflet-tile-pane {
+  filter: saturate(0.88) contrast(0.98) brightness(1.02);
 }
 
 .leaflet-div-icon {
