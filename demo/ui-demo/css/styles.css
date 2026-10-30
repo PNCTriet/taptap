@@ -109,9 +109,11 @@ body {
   flex-shrink: 0;
 }
 
-/* Fullscreen intro hides topbar & bottom nav completely */
+/* Fullscreen intro & Wrapped hide topbar & bottom nav completely */
 .app-frame.is-fullscreen-intro .app-topbar,
-.app-frame.is-fullscreen-intro .bottom-nav {
+.app-frame.is-fullscreen-intro .bottom-nav,
+.app-frame.is-wrapped-open .app-topbar,
+.app-frame.is-wrapped-open .bottom-nav {
   display: none !important;
 }
 
@@ -294,6 +296,32 @@ body {
   background: #fffdf8;
   color: var(--ink-dark);
   border: 1.5px solid var(--border-strong);
+}
+
+.btn-subtle {
+  appearance: none;
+  background: transparent;
+  color: var(--ink-muted);
+  border: 1.5px solid rgba(44, 34, 30, 0.18);
+  border-radius: 16px;
+  min-height: 40px;
+  padding: 8px 16px;
+  font-family: 'Baloo 2', cursive;
+  font-weight: 700;
+  font-size: 0.88rem;
+  line-height: 1.15;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.16s ease;
+  width: 100%;
+}
+
+.btn-subtle:active {
+  background: rgba(44, 34, 30, 0.05);
+  color: var(--ink-dark);
+  border-color: rgba(44, 34, 30, 0.32);
 }
 
 .icon-back-btn {
@@ -521,7 +549,7 @@ body {
 }
 
 .cq-card-area .tt-card-stage {
-  --card-height: min(38dvh, 300px);
+  --card-height: min(109vw, 420px, 52dvh);
 }
 
 .cq-fact-strip {
@@ -695,7 +723,6 @@ body {
   height: 100%;
   object-fit: contain;
   display: block;
-  mix-blend-mode: multiply;
 }
 
 .u7-badge-art-wrap.has-badge-img .u7-badge-fallback {
@@ -888,7 +915,7 @@ body {
 }
 
 .cd-stage-wrap .tt-card-stage {
-  --card-height: min(50dvh, 390px);
+  --card-height: min(109vw, 420px, 56dvh);
 }
 
 .cd-bottom-panel {
@@ -904,131 +931,189 @@ body {
 
 .cd-nav-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: 1fr 1.25fr 1fr;
+  gap: 6px;
 }
 
-/* ================= SCREEN 7: WRAPPED + CHIA SẺ ================= */
-.wrapped-screen {
-  padding: 6px 14px 16px;
-}
-
-.wrapped-story-shell {
-  position: relative;
-  flex: 1;
-  border-radius: 26px;
-  overflow: hidden;
-  /* Cream paper pastel, matching the rest of the app */
-  background:
-    radial-gradient(circle at 50% 38%, var(--theme-glow, rgba(255, 213, 194, 0.65)) 0%, transparent 62%),
-    linear-gradient(170deg, #fffdf8 0%, #faf2e1 100%);
+/* ================= SCREEN 4: AUTH PROMPT (GUEST) ================= */
+.cq-auth-box {
+  background: var(--surface-card);
   border: 1.5px solid var(--border-soft);
-  color: var(--ink-dark);
-  padding: 14px 16px 18px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: var(--shadow-elevated);
-}
-
-.wrapped-story-shell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.35;
-  background-image: radial-gradient(rgba(44, 34, 30, 0.07) 1px, transparent 0);
-  background-size: 14px 14px;
-}
-
-.wrapped-story-shell > * {
-  position: relative;
-}
-
-.story-bars {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 5px;
-}
-
-.story-bar-seg {
-  height: 4px;
-  border-radius: 999px;
-  background: rgba(44, 34, 30, 0.12);
-  overflow: hidden;
-}
-
-.story-bar-seg .fill {
-  height: 100%;
-  width: 0%;
-  background: var(--brand-orange);
-}
-
-.story-bar-seg.is-done .fill,
-.story-bar-seg.is-current .fill {
-  width: 100%;
-}
-
-/* Transparent brown logo on cream Wrapped background — no box/border */
-.wrapped-logo {
-  height: 30px;
-  width: auto;
-  object-fit: contain;
-  display: block;
-}
-
-.story-slide-body {
-  flex: 1;
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
   gap: 10px;
-  padding: 12px 6px;
-}
-
-.story-hero-art {
-  width: 132px;
-  aspect-ratio: 1237 / 1607;
-  border-radius: 16px;
-  background: #fff;
-  padding: 5px;
-  box-shadow: 0 12px 26px rgba(44, 34, 30, 0.16);
-  transform: rotate(-4deg);
   margin-bottom: 6px;
 }
 
-.story-hero-art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 11px;
-  display: block;
-}
-
-.story-big-stat {
+.cq-auth-title {
   font-family: 'Baloo 2', cursive;
   font-weight: 800;
-  font-size: 3.3rem;
-  line-height: 1;
-  color: var(--brand-orange);
-}
-
-.story-heading {
-  font-family: 'Baloo 2', cursive;
-  font-weight: 800;
-  font-size: 1.5rem;
-  line-height: 1.18;
+  font-size: 1rem;
+  line-height: 1.2;
   color: var(--ink-dark);
 }
 
-.story-subtext {
-  font-size: 0.9rem;
+/* ================= SOFT OPTIONAL CHALLENGE PROMPT ================= */
+.cq-challenge-prompt {
+  background: var(--surface-card);
+  border: 1.5px solid var(--border-soft);
+  border-radius: 20px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.cq-challenge-title {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: 1.05rem;
+  line-height: 1.2;
+  color: var(--ink-dark);
+}
+
+.cq-challenge-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ================= SCREEN 7: WRAPPED + CHIA SẺ (IFRAME INTEGRATION) ================= */
+.wrapped-screen {
+  padding: 0 !important;
+  inset: 0 !important;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  background: #fdf8ee;
+  overflow: hidden;
+}
+
+.wrapped-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.wrapped-floating-close-btn {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top));
+  right: 14px;
+  z-index: 80;
+  appearance: none;
+  background: rgba(44, 34, 30, 0.82);
+  color: #fffdf8;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 15px;
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: 0.86rem;
+  line-height: 1;
+  box-shadow: 0 4px 14px rgba(44, 34, 30, 0.28);
+  cursor: pointer;
+  transition: transform 0.16s ease, background 0.16s ease;
+}
+
+.wrapped-floating-close-btn:active {
+  transform: scale(0.94);
+  background: #2c221e;
+}
+
+/* ================= MILESTONE BADGE UNLOCK MODAL ================= */
+.milestone-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background: rgba(36, 26, 21, 0.68);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.milestone-modal-backdrop.is-open {
+  display: flex;
+  animation: modalFadeIn 0.28s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.milestone-modal-card {
+  width: 100%;
+  max-width: 320px;
+  background: #fffdf8;
+  border: 2px solid var(--brand-orange-soft);
+  border-radius: 26px;
+  padding: 24px 20px 20px;
+  box-shadow: 0 20px 48px rgba(44, 34, 30, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+  animation: modalScaleUp 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalScaleUp {
+  from { transform: scale(0.7); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.milestone-sparkles {
+  font-size: 1.5rem;
+}
+
+.milestone-modal-title {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: 1.3rem;
+  line-height: 1.15;
+  color: var(--ink-dark);
+}
+
+.milestone-modal-art {
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 4px 0;
+}
+
+.milestone-modal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 18px rgba(44, 34, 30, 0.22));
+}
+
+.milestone-modal-name {
+  font-family: 'Baloo 2', cursive;
+  font-weight: 800;
+  font-size: 1.12rem;
+  color: var(--brand-orange);
+}
+
+.milestone-modal-desc {
+  font-size: 0.85rem;
   font-weight: 600;
-  line-height: 1.45;
   color: var(--ink-body);
-  max-width: 270px;
+  line-height: 1.35;
+  margin-bottom: 6px;
 }
 
 /* ================= SCREEN 8: HỒ SƠ ================= */

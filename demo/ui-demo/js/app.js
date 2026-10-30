@@ -1,20 +1,19 @@
 /* ==========================================================================
    Tap Tap – Main Application Controller (js/app.js)
-   Revised per client feedback:
-   1. Transparent logos with zero box/border/bg.
-   2. Minimal copy: only titles, fun fact, quiz, key counts, buttons.
-   3. True fullscreen intro on Screen 2 (no chrome/buttons), then card pops out,
-      then buttons/quiz appear.
-   4. Gouache portrait map with NEXT suggested enclosure + station photo slot.
-   5. Simplified Home screen without duplicate nav buttons.
-   6. Tightly-cropped art-only images (assets/cards/art/<slug>.png) with
-      object-fit: cover and HTML animal names.
+   Full-flow pass (mobile-first, Vietnamese Gen Z copy):
+   - Flow A: NFC deep link (?station=<slug>) -> true fullscreen intro (no chrome)
+     -> 3D card reveal (tilt/flip) -> Google sign-in prompt (mock)
+     -> quiz (random 1 of 3-4, wrong answer retries with different question)
+     -> card saved to collection -> milestone badge unlock at 5/10/15 (tier_*.webp)
+     -> next suggested station on map.
+   - Flow B: Home -> Collection -> Card detail -> Map (landscape pan/zoom)
+     -> Profile (with reset) -> Wrapped (iframe under wrapped/, only unlocked at 15/15 or ?demo=full).
    ========================================================================== */
 
 (function () {
   'use strict';
 
-  const STORAGE_KEY = 'taptap_mvp_state_v3';
+  const STORAGE_KEY = 'taptap_flow_state_v1';
 
   const defaultState = {
     signedIn: false,
@@ -33,7 +32,6 @@
   let justWonStationId = null;
   let currentQuizIndex = -1;
   let quizResolvedForStation = false;
-  let wrappedSlideIndex = 0;
   let selectedMapStationId = null;
 
   let quizCard3D = null;
@@ -77,12 +75,25 @@
   }
 
   function getStationById(id) {
-    if (!appData || !appData.stations) return null;
+    if (!appData || !appData.stations || !id) return null;
     return appData.stations.find((s) => s.id === id) || null;
   }
 
+  function getStationByIdOrSlug(val) {
+    if (!appData || !appData.stations || !val) return null;
+    val = String(val).toLowerCase().trim();
+    return (
+      appData.stations.find(
+        (s) =>
+          s.id.toLowerCase() === val ||
+          (s.slug && s.slug.toLowerCase() === val) ||
+          String(s.number) === val
+      ) || null
+    );
+  }
+
   function getSecretById(id) {
-    if (!appData || !appData.secretCards) return null;
+    if (!appData || !appData.secretCards || !id) return null;
     return appData.secretCards.find((s) => s.id === id) || null;
   }
 
@@ -90,11 +101,15 @@
     return state.collectedIds.includes(stationId);
   }
 
+  function isWrappedUnlocked() {
+    const params = new URLSearchParams(window.location.search);
+    return state.collectedIds.length >= 15 || params.get('demo') === 'full';
+  }
+
   function getNextSuggestedStation() {
     if (!appData || !appData.stations) return null;
     const uncollected = appData.stations.filter((s) => !isCollected(s.id));
     if (uncollected.length > 0) {
-      // Prefer tiger if uncollected, otherwise first uncollected in route order
       const tiger = uncollected.find((s) => s.id === 'tiger');
       return tiger || uncollected[0];
     }
@@ -130,12 +145,16 @@
     if (currentScreen === 2 && screenNum !== 2) {
       stopStationVideo();
     }
+    if (currentScreen === 7 && screenNum !== 7) {
+      closeWrappedStory(false);
+    }
 
     currentScreen = screenNum;
 
     const appFrame = document.getElementById('appFrame');
     if (appFrame) {
       appFrame.classList.toggle('is-fullscreen-intro', screenNum === 2);
+      appFrame.classList.toggle('is-wrapped-open', screenNum === 7);
     }
 
     document.querySelectorAll('.screen').forEach((el) => {
@@ -154,7 +173,7 @@
     if (screenNum === 1) renderScreen1Home();
     if (screenNum === 2) renderScreen2Station(options.station || activeStation);
     if (screenNum === 3) renderScreen3Login();
-    if (screenNum === 4) renderScreen4CardQuiz(options.station || activeStation);
+    if (screenNum === 4) renderScreen4CardQuiz(options.station || activeStation, !!options.openQuiz);
     if (screenNum === 5) renderScreen5Collection();
     if (screenNum === 6) renderScreen6CardDetail(options.card || activeDetailCard);
     if (screenNum === 7) renderScreen7Wrapped();
@@ -163,8 +182,10 @@
   }
 
   // ================= FLOW A ENTRY: TAP NFC STATION =================
-  function triggerNfcTapFlow(stationId) {
-    const station = getStationById(stationId) || getNextSuggestedStation();
+  function triggerNfcTapFlow(stationQuery) {
+    const station =
+      getStationByIdOrSlug(stationQuery) ||
+      (stationQuery === 'tiger' ? getStationById('tiger') : getNextSuggestedStation());
     activeStation = station;
     setThemeColors(station);
     showScreen(2, { station });
@@ -196,12 +217,10 @@
 
   function finishStationIntroAndProceed() {
     stopStationVideo();
-    if (!activeStation && appData) activeStation = getNextSuggestedStation();
-    if (!state.signedIn) {
-      showScreen(3);
-    } else {
-      showScreen(4, { station: activeStation });
-    }
+    const station = activeStation || getStationById('tiger') || getNextSuggestedStation();
+    activeStation = station;
+    // Flow A: NFC video ends -> Card reveal (3D tilt/flip) on Screen 4
+    showScreen(4, { station });
   }
 
   function renderScreen2Station(station) {
@@ -231,6 +250,7 @@
     state.signedIn = true;
     state.userName = 'Minh Anh';
     saveState();
+    showToast('Đã đăng nhập Google');
     if (activeStation) {
       showScreen(4, { station: activeStation });
     } else {
@@ -239,21 +259,48 @@
   }
 
   // ================= SCREEN 4: THẺ THÚ + QUIZ =================
-  function renderScreen4CardQuiz(station) {
-    if (!station && appData) station = getNextSuggestedStation();
+  function renderScreen4CardQuiz(station, openQuizDirectly = false) {
+    if (!station && appData) {
+      station = activeStation || getStationById('tiger') || getNextSuggestedStation();
+    }
     activeStation = station;
     setThemeColors(station);
     quizResolvedForStation = false;
     currentQuizIndex = -1;
 
+    // Immediately mark card as collected upon entering Screen 4
+    const prevCount = state.collectedIds.length;
+    if (!isCollected(station.id)) {
+      state.collectedIds.push(station.id);
+      justWonStationId = station.id;
+      state.favoriteStationId = station.id;
+      saveState();
+
+      const newCount = state.collectedIds.length;
+      if (
+        (prevCount < 5 && newCount >= 5) ||
+        (prevCount < 10 && newCount >= 10) ||
+        (prevCount < 15 && newCount >= 15)
+      ) {
+        const tier = newCount >= 15 ? 15 : newCount >= 10 ? 10 : 5;
+        setTimeout(() => showMilestoneModal(tier), 650);
+      }
+    }
+
     const screenEl = document.getElementById('screen-4');
     const factEl = document.getElementById('cqFunFactText');
-    const collectBtn = document.getElementById('cqGoCollectionBtn');
+    const authBox = document.getElementById('cqAuthBox');
+    const promptBox = document.getElementById('cqChallengePrompt');
+    const quizBox = document.getElementById('quizBox');
+    const postWinActions = document.getElementById('cqPostWinActions');
 
     if (factEl) factEl.textContent = station.funFact;
-    if (collectBtn) collectBtn.style.display = 'none';
+    if (postWinActions) postWinActions.style.display = 'none';
+    if (quizBox) quizBox.style.display = 'none';
+    if (promptBox) promptBox.style.display = 'none';
+    if (authBox) authBox.style.display = 'none';
 
-    // Hide buttons/quiz while card pops out, then reveal them once card lands
+    // Hide post-reveal UI while card pops out
     if (screenEl) screenEl.classList.add('is-popping');
 
     const mountEl = document.getElementById('cqCardMount');
@@ -264,12 +311,37 @@
       quizCard3D.setCardData(station);
       quizCard3D.playPopReveal(() => {
         if (screenEl) screenEl.classList.remove('is-popping');
+        // Once card lands: user enjoys card (tilt/flip, fun fact)
+        if (openQuizDirectly) {
+          if (authBox) authBox.style.display = 'none';
+          if (promptBox) promptBox.style.display = 'none';
+          if (quizBox) quizBox.style.display = 'flex';
+        } else if (!state.signedIn) {
+          // If guest, show auth prompt first
+          if (authBox) authBox.style.display = 'flex';
+          if (promptBox) promptBox.style.display = 'none';
+          if (quizBox) quizBox.style.display = 'none';
+        } else {
+          // Soft optional prompt: 'Có thử thách nè, chơi không?'
+          if (authBox) authBox.style.display = 'none';
+          if (promptBox) promptBox.style.display = 'flex';
+          if (quizBox) quizBox.style.display = 'none';
+        }
       });
     } else if (screenEl) {
       screenEl.classList.remove('is-popping');
     }
 
     loadRandomQuizQuestion(station, -1);
+  }
+
+  function proceedToPromptAfterAuth() {
+    const authBox = document.getElementById('cqAuthBox');
+    const promptBox = document.getElementById('cqChallengePrompt');
+    const quizBox = document.getElementById('quizBox');
+    if (authBox) authBox.style.display = 'none';
+    if (promptBox) promptBox.style.display = 'flex';
+    if (quizBox) quizBox.style.display = 'none';
   }
 
   function loadRandomQuizQuestion(station, excludeIdx) {
@@ -321,8 +393,8 @@
     if (quizResolvedForStation) return;
 
     const isCorrect = clickedBtn.dataset.correct === 'true';
-    const collectBtn = document.getElementById('cqGoCollectionBtn');
     const statusIcon = clickedBtn.querySelector('.opt-status-icon');
+    const postWinActions = document.getElementById('cqPostWinActions');
 
     if (isCorrect) {
       quizResolvedForStation = true;
@@ -332,17 +404,17 @@
       if (!isCollected(station.id)) {
         state.collectedIds.push(station.id);
       }
-      justWonStationId = station.id;
       state.quizCorrectCount = (state.quizCorrectCount || 0) + 1;
-      state.favoriteStationId = station.id;
       saveState();
 
       if (quizCard3D) quizCard3D.burstParticles();
 
-      const totalNow = state.collectedIds.length;
-      if (collectBtn) {
-        collectBtn.style.display = 'inline-flex';
-        collectBtn.querySelector('span').textContent = `Bỏ túi (${totalNow}/15) →`;
+      if (postWinActions) {
+        postWinActions.style.display = 'flex';
+        const colBtn = document.getElementById('cqGoCollectionBtn');
+        if (colBtn) {
+          colBtn.querySelector('span').textContent = `Xem Bộ sưu tập (${state.collectedIds.length}/15)`;
+        }
       }
     } else {
       clickedBtn.classList.add('is-wrong');
@@ -354,8 +426,34 @@
         if (currentScreen === 4 && !quizResolvedForStation) {
           loadRandomQuizQuestion(station, currentQuizIndex);
         }
-      }, 900);
+      }, 850);
     }
+  }
+
+  // ================= MILESTONE BADGE MODAL =================
+  function showMilestoneModal(tier) {
+    const modal = document.getElementById('milestoneModal');
+    const img = document.getElementById('milestoneModalImg');
+    const name = document.getElementById('milestoneModalName');
+    const desc = document.getElementById('milestoneModalDesc');
+    if (!modal) return;
+
+    if (img) img.src = `assets/badges/tier_${tier}.webp`;
+    if (name) name.textContent = `Mốc ${tier} thẻ thú`;
+    if (desc) {
+      desc.textContent =
+        tier === 15
+          ? 'Đủ bộ 15 thẻ thú! Bạn đã mở khóa Tap Tap Wrapped.'
+          : tier === 10
+          ? 'Tuyệt đỉnh! Đã hoàn thành 2/3 hành trình.'
+          : 'Collector chính hiệu! Tiếp tục săn thẻ nào.';
+    }
+    modal.classList.add('is-open');
+  }
+
+  function closeMilestoneModal() {
+    const modal = document.getElementById('milestoneModal');
+    if (modal) modal.classList.remove('is-open');
   }
 
   // ================= SCREEN 5: BỘ SƯU TẬP =================
@@ -384,9 +482,9 @@
     }
 
     if (progFill) progFill.style.width = `${pct}%`;
-    if (wrappedBanner) wrappedBanner.classList.toggle('is-visible', count >= 15);
+    if (wrappedBanner) wrappedBanner.classList.toggle('is-visible', isWrappedUnlocked());
 
-    // U7 Badges Row (5 / 10 / 15) — wires assets/badges/tier_{5,10,15}.webp when present
+    // U7 Badges Row (5 / 10 / 15) using assets/badges/tier_*.webp
     const badgesGrid = document.getElementById('colBadgesGrid');
     if (badgesGrid && appData) {
       badgesGrid.innerHTML = appData.badges
@@ -408,7 +506,7 @@
         .join('');
     }
 
-    // U1 + U2 Numbered Grid (#01 - #15) using tightly cropped art-only images
+    // Numbered Grid (#01 - #15)
     const dexGrid = document.getElementById('colDexGrid');
     if (dexGrid && appData) {
       dexGrid.innerHTML = appData.stations
@@ -539,113 +637,34 @@
     renderScreen6CardDetail(pool[nextIdx]);
   }
 
-  // ================= SCREEN 7: WRAPPED + CHIA SẺ =================
-  function getWrappedSlides() {
-    const count = state.collectedIds.length || 15;
-    const fav = getStationById(state.favoriteStationId) || getStationById('tiger');
-    const quizCount = Math.max(count, state.quizCorrectCount || count);
-    const lastId = state.collectedIds[state.collectedIds.length - 1];
-    const lastCard = lastId ? getStationById(lastId) : fav;
-    const badgesUnlocked = count >= 15 ? 3 : count >= 10 ? 2 : count >= 5 ? 1 : 0;
-    const secretsUnlocked = state.unlockedSecrets.length;
-
-    return [
-      {
-        stat: `${count}/15`,
-        art: lastCard ? lastCard.cardArt : null,
-        heading: 'Thẻ Thú Đã Săn',
-        sub: `Hệ phá đảo Thảo Cầm Viên • ${state.userName}`
-      },
-      {
-        stat: fav ? `#${String(fav.number).padStart(2, '0')}` : '#08',
-        art: fav ? fav.cardArt : null,
-        heading: fav ? fav.name : 'Hổ Bengal vàng (Mi–Xám)',
-        sub: fav ? fav.funFact : 'Hổ Xám gạ kèo kéo co với khách vào T7 tuần 1 & 3'
-      },
-      {
-        stat: `${quizCount}`,
-        heading: 'Quiz Chuẩn Đét',
-        sub: 'Rành lịch sinh hoạt sở thú như thổ địa'
-      },
-      {
-        stat: `${badgesUnlocked}/3`,
-        heading: 'Huy Hiệu Mở Khóa',
-        sub: 'Mốc 5 • Mốc 10 • Full 15'
-      },
-      {
-        stat: `${secretsUnlocked}/3`,
-        heading: 'Thẻ Bí Mật',
-        sub: 'Mèo cam Mika • Thiên nga Dương–Hảo • Già đẫy Java'
-      }
-    ];
-  }
-
+  // ================= SCREEN 7: WRAPPED (IFRAME UNDER wrapped/) =================
   function renderScreen7Wrapped() {
-    wrappedSlideIndex = 0;
-    renderWrappedSlide();
-    const frame = document.getElementById('wrappedFrame');
-    if (frame) {
-      const n = state.collectedIds.length;
-      const q = state.quizCorrectCount || n * 3;
-      frame.src = `wrapped/index.html?n=${n}&s=${state.unlockedSecrets.length}&q=${q}&t=${Date.now()}`;
-    }
-  }
-  window.addEventListener('message', (e) => {
-    if (e.data === 'taptap-wrapped-close') {
-      const f = document.getElementById('wrappedFrame');
-      if (f) f.src = 'about:blank';
-      const c = document.getElementById('wrappedCloseBtn');
-      if (c) c.click();
-    }
-  });
-
-  function renderWrappedSlide() {
-    const slides = getWrappedSlides();
-    const slide = slides[wrappedSlideIndex] || slides[0];
-
-    const barsWrap = document.getElementById('wrappedBars');
-    if (barsWrap) {
-      barsWrap.innerHTML = slides
-        .map(
-          (_, idx) => `
-          <div class="story-bar-seg ${idx < wrappedSlideIndex ? 'is-done' : ''} ${idx === wrappedSlideIndex ? 'is-current' : ''}">
-            <div class="fill"></div>
-          </div>
-        `
-        )
-        .join('');
+    if (!isWrappedUnlocked()) {
+      showToast('Cần đủ 15/15 thẻ thú để mở Wrapped!');
+      showScreen(5);
+      return;
     }
 
-    const bodyEl = document.getElementById('wrappedSlideBody');
-    if (bodyEl) {
-      bodyEl.innerHTML = `
-        ${slide.art ? `<div class="story-hero-art"><img src="${slide.art}" alt="" /></div>` : ''}
-        <div class="story-big-stat">${slide.stat}</div>
-        <h2 class="story-heading">${slide.heading}</h2>
-        <p class="story-subtext">${slide.sub}</p>
-      `;
+    const frame = document.getElementById('appFrame');
+    if (frame) frame.classList.add('is-wrapped-open');
+
+    const iframe = document.getElementById('wrappedIframe');
+    if (iframe) {
+      iframe.src = 'wrapped/index.html';
     }
   }
 
-  async function handleShareWrapped() {
-    const shareData = {
-      title: 'Tap Tap – Thảo Cầm Viên',
-      text: `Đã săn ${state.collectedIds.length}/15 thẻ thú tại Thảo Cầm Viên!`,
-      url: window.location.origin + window.location.pathname
-    };
+  function closeWrappedStory(navigateBack = true) {
+    const frame = document.getElementById('appFrame');
+    if (frame) frame.classList.remove('is-wrapped-open');
 
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (_) {}
+    const iframe = document.getElementById('wrappedIframe');
+    if (iframe) {
+      iframe.src = 'about:blank';
     }
 
-    try {
-      await navigator.clipboard.writeText(shareData.url);
-      showToast('Đã sao chép link');
-    } catch (_) {
-      showToast('Đã sao chép link');
+    if (navigateBack) {
+      showScreen(5);
     }
   }
 
@@ -661,17 +680,33 @@
     const statBadges = document.getElementById('profStatBadges');
     const statSecrets = document.getElementById('profStatSecrets');
     const authActionBtn = document.getElementById('profAuthActionBtn');
+    const openWrappedBtn = document.getElementById('profOpenWrappedBtn');
 
     if (nameEl) nameEl.textContent = state.signedIn ? state.userName : 'Khách vãng lai';
     if (statCards) statCards.textContent = `${count}/15`;
     if (statBadges) statBadges.textContent = `${badgesCount}/3`;
     if (statSecrets) statSecrets.textContent = `${secretsCount}/3`;
+
     if (authActionBtn) {
-      authActionBtn.textContent = state.signedIn ? 'Đăng xuất' : 'Đăng nhập Google';
+      const span = authActionBtn.querySelector('span');
+      const text = state.signedIn ? 'Đăng xuất' : 'Đăng nhập Google';
+      if (span) span.textContent = text;
+      else authActionBtn.textContent = text;
+    }
+
+    if (openWrappedBtn) {
+      const unlocked = isWrappedUnlocked();
+      openWrappedBtn.classList.add('btn-main');
+      openWrappedBtn.classList.toggle('btn-accent', unlocked);
+      openWrappedBtn.classList.toggle('btn-cream', !unlocked);
+      const span = openWrappedBtn.querySelector('span');
+      const label = unlocked ? 'Mở Tap Tap Wrapped' : 'Mở Wrapped (cần 15/15)';
+      if (span) span.textContent = label;
+      else openWrappedBtn.textContent = label;
     }
   }
 
-  // ================= SCREEN 9: BẢN ĐỒ TRẠM NFC =================
+  // ================= SCREEN 9: BẢN ĐỒ TRẠM NFC (LANDSCAPE MAP) =================
   function renderScreen9Map(focusStationId) {
     setThemeColors(null);
     const nextStation = getNextSuggestedStation();
@@ -687,9 +722,6 @@
 
     const pinsContainer = document.getElementById('mapPinsContainer');
     if (!pinsContainer || !appData) return;
-
-    // Fit map height to viewport (zoom 1 = full height, pan horizontally)
-    setMapZoom(mapZoom);
 
     pinsContainer.innerHTML = appData.stations
       .map((st) => {
@@ -716,11 +748,13 @@
       });
     });
 
-    if (focusStationId) {
-      openMapStationSheet(focusStationId);
-    } else if (nextStation) {
-      openMapStationSheet(nextStation.id);
-    }
+    requestAnimationFrame(() => {
+      setMapZoom(mapZoom);
+      const targetId = focusStationId || (nextStation ? nextStation.id : null);
+      if (targetId) {
+        openMapStationSheet(targetId);
+      }
+    });
   }
 
   function openMapStationSheet(stationId) {
@@ -736,23 +770,15 @@
     const photoSlotEl = document.getElementById('mapSheetPhotoSlot');
     const titleEl = document.getElementById('mapSheetTitle');
     const zoneEl = document.getElementById('mapSheetZone');
-    const factEl = document.getElementById('mapSheetFact');
     const primaryBtn = document.getElementById('mapSheetPrimaryBtn');
 
-    const collected = isCollected(st.id);
     if (photoSlotEl) photoSlotEl.textContent = st.name;
     if (titleEl) titleEl.textContent = `#${String(st.number).padStart(2, '0')} • ${st.name}`;
     if (zoneEl) zoneEl.textContent = st.zone;
-    if (factEl) factEl.textContent = st.funFact;
     if (primaryBtn) {
-      primaryBtn.textContent = collected ? 'Xem thẻ 3D' : 'Chạm NFC';
+      primaryBtn.textContent = 'Xem vị trí NFC';
       primaryBtn.onclick = () => {
-        if (collected) {
-          activeDetailCard = st;
-          showScreen(6, { card: st });
-        } else {
-          triggerNfcTapFlow(st.id);
-        }
+        triggerNfcTapFlow(st.id);
       };
     }
 
@@ -763,7 +789,7 @@
     panMapToStation(st, true);
   }
 
-  // ================= MAP PAN + ZOOM (landscape map inside the mobile screen) =================
+  // ================= MAP PAN + ZOOM =================
   const MAP_RATIO = 2752 / 1536;
   const MAP_MIN_ZOOM = 1;
   const MAP_MAX_ZOOM = 2.6;
@@ -776,7 +802,6 @@
     };
   }
 
-  // Resize canvas for a zoom level while keeping the focal point (viewport coords fx, fy) fixed
   function setMapZoom(nextZoom, fx, fy) {
     const { vp, canvas } = getMapEls();
     if (!vp || !canvas || !vp.clientHeight) return;
@@ -795,22 +820,26 @@
     mapZoom = z;
 
     vp.scrollLeft = relX * newW - fx;
-    vp.scrollTop = relY * newH - fy;
+    if (z <= 1.02) {
+      vp.scrollTop = 0;
+    } else {
+      vp.scrollTop = relY * newH - fy;
+    }
   }
 
-  // Center a station pin in the visible map area (above the slide-up sheet)
   function panMapToStation(st, smooth) {
     const { vp, canvas } = getMapEls();
     if (!vp || !canvas || !st || !st.mapPin) return;
     if (!canvas.style.height) setMapZoom(mapZoom);
-    const sheet = document.getElementById('mapBottomSheet');
-    const sheetH = sheet && sheet.classList.contains('is-open') ? sheet.offsetHeight + 10 : 0;
-    const visibleH = Math.max(80, vp.clientHeight - sheetH);
     const px = (st.mapPin.x / 100) * canvas.offsetWidth;
     const py = (st.mapPin.y / 100) * canvas.offsetHeight;
+    const maxScrollLeft = Math.max(0, canvas.offsetWidth - vp.clientWidth);
+    const targetLeft = Math.max(0, Math.min(maxScrollLeft, px - vp.clientWidth / 2));
+    const maxScrollTop = Math.max(0, canvas.offsetHeight - vp.clientHeight);
+    const targetTop = maxScrollTop > 0 ? Math.max(0, Math.min(maxScrollTop, py - vp.clientHeight / 2)) : 0;
     vp.scrollTo({
-      left: px - vp.clientWidth / 2,
-      top: py - visibleH / 2,
+      left: targetLeft,
+      top: targetTop,
       behavior: smooth ? 'smooth' : 'auto'
     });
   }
@@ -857,12 +886,15 @@
         if (!panStart.moved && Math.hypot(dx, dy) > 6) {
           panStart.moved = true;
           vp.classList.add('is-panning');
-          // Capture only once dragging so plain taps still reach the pins
           try { vp.setPointerCapture(e.pointerId); } catch (_) {}
         }
         if (panStart.moved) {
           vp.scrollLeft = panStart.left - dx;
-          vp.scrollTop = panStart.top - dy;
+          if (mapZoom > 1.02) {
+            vp.scrollTop = panStart.top - dy;
+          } else {
+            vp.scrollTop = 0;
+          }
         }
       }
     });
@@ -886,7 +918,6 @@
           e.preventDefault();
           setMapZoom(mapZoom * Math.exp(-e.deltaY * 0.01), e.clientX - rect.left, e.clientY - rect.top);
         } else if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-          // Vertical wheel pans the landscape map horizontally
           e.preventDefault();
           vp.scrollLeft += e.deltaY;
         }
@@ -904,7 +935,7 @@
     });
   }
 
-  // ================= HIDDEN DEV PANEL (TRIPLE-TAP LOGO OR SHIFT+D) =================
+  // ================= HIDDEN DEV PANEL =================
   function setupDevPanel() {
     const logoBtn = document.getElementById('topBrandLogoBtn');
     const devBackdrop = document.getElementById('devModalBackdrop');
@@ -1015,7 +1046,7 @@
       });
     }
 
-    // Screen 2 fullscreen intro video -> transitions automatically when video ends
+    // Screen 2 fullscreen intro video
     const stVideo = document.getElementById('stationIntroVideo');
     if (stVideo) {
       stVideo.addEventListener('ended', finishStationIntroAndProceed);
@@ -1038,9 +1069,46 @@
       });
     }
 
+    // Screen 4: Auth prompt buttons
+    const cqGoogleBtn = document.getElementById('cqGoogleSignInBtn');
+    const cqSkipBtn = document.getElementById('cqSkipAuthBtn');
+    if (cqGoogleBtn) {
+      cqGoogleBtn.addEventListener('click', () => {
+        state.signedIn = true;
+        state.userName = 'Minh Anh';
+        saveState();
+        showToast('Đã đăng nhập Google');
+        proceedToPromptAfterAuth();
+      });
+    }
+    if (cqSkipBtn) {
+      cqSkipBtn.addEventListener('click', proceedToPromptAfterAuth);
+    }
+
+    // Screen 4: Soft optional challenge prompt buttons
+    const cqPlayQuizBtn = document.getElementById('cqPlayQuizBtn');
+    const cqLaterQuizBtn = document.getElementById('cqLaterQuizBtn');
+    if (cqPlayQuizBtn) {
+      cqPlayQuizBtn.addEventListener('click', () => {
+        const promptBox = document.getElementById('cqChallengePrompt');
+        const quizBox = document.getElementById('quizBox');
+        if (promptBox) promptBox.style.display = 'none';
+        if (quizBox) quizBox.style.display = 'flex';
+      });
+    }
+    if (cqLaterQuizBtn) {
+      cqLaterQuizBtn.addEventListener('click', () => {
+        const promptBox = document.getElementById('cqChallengePrompt');
+        const postWinActions = document.getElementById('cqPostWinActions');
+        if (promptBox) promptBox.style.display = 'none';
+        if (postWinActions) postWinActions.style.display = 'flex';
+      });
+    }
+
     // Screen 4 (Card + Quiz)
     const cqBackBtn = document.getElementById('cqBackBtn');
     const cqFlipBtn = document.getElementById('cqFlipCardBtn');
+    const cqNextMapBtn = document.getElementById('cqNextMapBtn');
     const cqGoCollectionBtn = document.getElementById('cqGoCollectionBtn');
     if (cqBackBtn) cqBackBtn.addEventListener('click', () => showScreen(5));
     if (cqFlipBtn) {
@@ -1048,8 +1116,20 @@
         if (quizCard3D) quizCard3D.flipCard();
       });
     }
+    if (cqNextMapBtn) {
+      cqNextMapBtn.addEventListener('click', () => {
+        const nextSt = getNextSuggestedStation();
+        showScreen(9, { focusStationId: nextSt ? nextSt.id : null });
+      });
+    }
     if (cqGoCollectionBtn) {
       cqGoCollectionBtn.addEventListener('click', () => showScreen(5));
+    }
+
+    // Milestone Modal
+    const milestoneModalCloseBtn = document.getElementById('milestoneModalCloseBtn');
+    if (milestoneModalCloseBtn) {
+      milestoneModalCloseBtn.addEventListener('click', closeMilestoneModal);
     }
 
     // Screen 5 (Collection)
@@ -1061,6 +1141,7 @@
     // Screen 6 (Card Detail)
     const cdBackBtn = document.getElementById('cdBackColBtn');
     const cdFlipBtn = document.getElementById('cdFlipBtn');
+    const cdChallengeBtn = document.getElementById('cdChallengeBtn');
     const cdPrevBtn = document.getElementById('cdPrevCardBtn');
     const cdNextBtn = document.getElementById('cdNextCardBtn');
     if (cdBackBtn) cdBackBtn.addEventListener('click', () => showScreen(5));
@@ -1069,51 +1150,65 @@
         if (detailCard3D) detailCard3D.flipCard();
       });
     }
-    if (cdPrevBtn) cdPrevBtn.addEventListener('click', () => stepDetailCard(-1));
-    if (cdNextBtn) cdNextBtn.addEventListener('click', () => stepDetailCard(1));
-
-    // Screen 7 (Wrapped)
-    const wrappedPrevBtn = document.getElementById('wrappedPrevSlideBtn');
-    const wrappedNextBtn = document.getElementById('wrappedNextSlideBtn');
-    const wrappedShareBtn = document.getElementById('wrappedShareBtn');
-    const wrappedCloseBtn = document.getElementById('wrappedCloseBtn');
-    if (wrappedPrevBtn) {
-      wrappedPrevBtn.addEventListener('click', () => {
-        wrappedSlideIndex = Math.max(0, wrappedSlideIndex - 1);
-        renderWrappedSlide();
-      });
-    }
-    if (wrappedNextBtn) {
-      wrappedNextBtn.addEventListener('click', () => {
-        const slides = getWrappedSlides();
-        if (wrappedSlideIndex < slides.length - 1) {
-          wrappedSlideIndex++;
-          renderWrappedSlide();
-        } else {
-          handleShareWrapped();
+    if (cdChallengeBtn) {
+      cdChallengeBtn.addEventListener('click', () => {
+        if (activeDetailCard) {
+          showScreen(4, { station: activeDetailCard, openQuiz: true });
         }
       });
     }
-    if (wrappedShareBtn) wrappedShareBtn.addEventListener('click', handleShareWrapped);
-    if (wrappedCloseBtn) wrappedCloseBtn.addEventListener('click', () => showScreen(5));
+    if (cdPrevBtn) cdPrevBtn.addEventListener('click', () => stepDetailCard(-1));
+    if (cdNextBtn) cdNextBtn.addEventListener('click', () => stepDetailCard(1));
+
+    // Screen 7 (Wrapped close button)
+    const wrappedCloseBtn = document.getElementById('wrappedCloseBtn');
+    if (wrappedCloseBtn) {
+      wrappedCloseBtn.addEventListener('click', () => closeWrappedStory(true));
+    }
 
     // Screen 8 (Profile)
     const profAuthActionBtn = document.getElementById('profAuthActionBtn');
     const profOpenWrappedBtn = document.getElementById('profOpenWrappedBtn');
+    const profResetProgressBtn = document.getElementById('profResetProgressBtn');
+
     if (profAuthActionBtn) {
       profAuthActionBtn.addEventListener('click', () => {
         if (state.signedIn) {
           state.signedIn = false;
           saveState();
           renderScreen8Profile();
+          showToast('Đã đăng xuất');
         } else {
           activeStation = null;
           showScreen(3);
         }
       });
     }
+
     if (profOpenWrappedBtn) {
-      profOpenWrappedBtn.addEventListener('click', () => showScreen(7));
+      profOpenWrappedBtn.addEventListener('click', () => {
+        if (isWrappedUnlocked()) {
+          showScreen(7);
+        } else {
+          showToast('Cần đủ 15/15 thẻ thú để mở Wrapped!');
+        }
+      });
+    }
+
+    if (profResetProgressBtn) {
+      profResetProgressBtn.addEventListener('click', () => {
+        localStorage.removeItem(STORAGE_KEY);
+        state = {
+          ...defaultState,
+          collectedIds: [],
+          unlockedSecrets: [],
+          quizCorrectCount: 0
+        };
+        saveState();
+        showToast('Đã đặt lại tiến độ!');
+        renderScreen8Profile();
+        updateGlobalCounters();
+      });
     }
 
     // Screen 9 (Map)
@@ -1121,11 +1216,16 @@
     if (mapCloseSheetBtn) {
       mapCloseSheetBtn.addEventListener('click', () => {
         const sheet = document.getElementById('mapBottomSheet');
-        const viewportCard = document.getElementById('mapViewportCard');
         if (sheet) sheet.classList.remove('is-open');
-        if (viewportCard) viewportCard.classList.remove('has-sheet-open');
       });
     }
+
+    // Listen for close message from Wrapped iframe
+    window.addEventListener('message', (e) => {
+      if (e.data === 'taptap-wrapped-close' || (e.data && e.data.type === 'CLOSE_WRAPPED')) {
+        closeWrappedStory(true);
+      }
+    });
   }
 
   async function initApp() {
@@ -1140,26 +1240,37 @@
       appData = window.TAPTAP_FALLBACK_DATA;
     }
 
-    // First visit: seed the shared demo state (10/15) so every screen tells the same story
-    let hasStored = false;
-    try { hasStored = !!localStorage.getItem(STORAGE_KEY); } catch (_) {}
-    if (!hasStored) window.TapTapApp.setDemoState();
+    const params = new URLSearchParams(window.location.search);
+    const hasStored = !!localStorage.getItem(STORAGE_KEY);
+
+    // If ?demo=full is present, immediately unlock 15/15 cards & secrets
+    if (params.get('demo') === 'full') {
+      window.TapTapApp.setDemoState(15);
+    } else if (!hasStored) {
+      // Default state is EMPTY (0/15, no pre-seeded collected cards)
+      state = {
+        ...defaultState,
+        signedIn: false,
+        userName: 'Minh Anh',
+        collectedIds: [],
+        unlockedSecrets: [],
+        quizCorrectCount: 0,
+        favoriteStationId: 'tiger'
+      };
+      saveState();
+    }
 
     updateGlobalCounters();
     bindStaticEvents();
     setupDevPanel();
     setupMapPanZoom();
 
-    const params = new URLSearchParams(window.location.search);
     const stationParam = params.get('station');
     const screenParam = Number(params.get('screen'));
 
     if (stationParam) {
-      const st = getStationById(stationParam.toLowerCase());
-      if (st) {
-        triggerNfcTapFlow(st.id);
-        return;
-      }
+      triggerNfcTapFlow(stationParam);
+      return;
     }
 
     if (screenParam >= 1 && screenParam <= 9) {
@@ -1175,23 +1286,28 @@
     triggerNfcTapFlow,
     finishStationIntroAndProceed,
     openDevPanel,
+    showMilestoneModal,
     tiltDetailCard() {
       if (detailCard3D) detailCard3D.startGentleShowcaseTilt(-11, 14);
     },
-    // Consistent demo state used for every screen: 10/15 collected, next stop = #08 Hổ
-    setDemoState() {
+    setDemoState(count = 10) {
       if (!appData) return;
-      const DEMO_IDS = ['elephant', 'giraffe', 'capybara', 'meerkat', 'sunbear', 'raccoon', 'rhino', 'gibbon', 'flamingo', 'peafowl'];
       state.signedIn = true;
       state.userName = 'Minh Anh';
-      state.collectedIds = DEMO_IDS.filter((id) => getStationById(id));
-      state.unlockedSecrets = ['mika'];
-      state.quizCorrectCount = 10;
+      if (count >= 15) {
+        state.collectedIds = appData.stations.map((s) => s.id);
+        state.unlockedSecrets = appData.secretCards.map((s) => s.id);
+        state.quizCorrectCount = 15;
+      } else {
+        const DEMO_IDS = ['elephant', 'giraffe', 'capybara', 'meerkat', 'sunbear', 'raccoon', 'rhino', 'gibbon', 'flamingo', 'peafowl'];
+        state.collectedIds = DEMO_IDS.filter((id) => getStationById(id));
+        state.unlockedSecrets = ['mika'];
+        state.quizCorrectCount = 10;
+      }
       state.favoriteStationId = 'capybara';
       justWonStationId = null;
       activeDetailCard = null;
       activeStation = getStationById('tiger');
-      wrappedSlideIndex = 0;
       saveState();
     },
     setProgress(count, unlockSecrets = false) {

@@ -86,7 +86,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "accent": "#2F8568",
       "glow": "rgba(205, 230, 208, 0.72)",
       "cardArt": "assets/cards/art/voi.webp",
-      "introVideo": "intro-anim/tiger_v2_trim.mp4",
+      "introVideo": "intro-anim/ele.mp4",
       "mapPin": {
         "x": 43,
         "y": 60,
@@ -135,7 +135,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "accent": "#D95B26",
       "glow": "rgba(255, 210, 177, 0.72)",
       "cardArt": "assets/cards/art/huou-cao-co.webp",
-      "introVideo": "intro-anim/tiger_v2_trim.mp4",
+      "introVideo": "intro-anim/gir.mp4",
       "mapPin": {
         "x": 35,
         "y": 63,
@@ -184,7 +184,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "accent": "#D97724",
       "glow": "rgba(244, 232, 148, 0.70)",
       "cardArt": "assets/cards/art/capybara.webp",
-      "introVideo": "intro-anim/tiger_v2_trim.mp4",
+      "introVideo": "intro-anim/capy.mp4",
       "mapPin": {
         "x": 35,
         "y": 30,
@@ -233,7 +233,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "accent": "#D46A1E",
       "glow": "rgba(255, 224, 181, 0.70)",
       "cardArt": "assets/cards/art/meerkat.webp",
-      "introVideo": "intro-anim/tiger_v2_trim.mp4",
+      "introVideo": "intro-anim/meer.mp4",
       "mapPin": {
         "x": 38,
         "y": 36,
@@ -331,7 +331,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "accent": "#2E78B5",
       "glow": "rgba(207, 232, 250, 0.72)",
       "cardArt": "assets/cards/art/gau-meo.webp",
-      "introVideo": "intro-anim/tiger_v2_trim.mp4",
+      "introVideo": "intro-anim/rp.mp4",
       "mapPin": {
         "x": 70,
         "y": 58,
