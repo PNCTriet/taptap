@@ -3,14 +3,14 @@ window.TAPTAP_FALLBACK_DATA = {
     "title": "Tap Tap – Thảo Cầm Viên Sài Gòn",
     "totalStations": 15,
     "defaultIntroVideo": "intro-anim/tiger_v2_trim.mp4",
-    "mapImage": "assets/map/zoo_map_gouache_landscape.png"
+    "mapImage": "assets/map/zoo_map_gouache_landscape.webp"
   },
   "badges": [
     {
       "id": "badge-5",
       "milestone": 5,
       "title": "Mốc 5",
-      "img": "assets/badges/tier_5.png",
+      "img": "assets/badges/tier_5.webp",
       "bg": "#FFF0D6",
       "accent": "#E67E22"
     },
@@ -18,7 +18,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "id": "badge-10",
       "milestone": 10,
       "title": "Mốc 10",
-      "img": "assets/badges/tier_10.png",
+      "img": "assets/badges/tier_10.webp",
       "bg": "#E1F6EC",
       "accent": "#2E8B67"
     },
@@ -26,7 +26,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "id": "badge-15",
       "milestone": 15,
       "title": "Full 15",
-      "img": "assets/badges/tier_15.png",
+      "img": "assets/badges/tier_15.webp",
       "bg": "#F3E5FC",
       "accent": "#7D3C98"
     }
@@ -43,7 +43,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#FFE5C8",
       "accent": "#D96B27",
       "glow": "rgba(255, 229, 200, 0.72)",
-      "cardArt": "assets/cards/art/meo-mika.png"
+      "cardArt": "assets/cards/art/meo-mika.webp"
     },
     {
       "id": "swans",
@@ -56,7 +56,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#F9F4E8",
       "accent": "#B8863B",
       "glow": "rgba(249, 244, 232, 0.78)",
-      "cardArt": "assets/cards/art/thien-nga-duong-hao.png"
+      "cardArt": "assets/cards/art/thien-nga-duong-hao.webp"
     },
     {
       "id": "adjutant",
@@ -69,7 +69,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#D9E4EC",
       "accent": "#486B85",
       "glow": "rgba(217, 228, 236, 0.74)",
-      "cardArt": "assets/cards/art/co-gia-day-java.png"
+      "cardArt": "assets/cards/art/co-gia-day-java.webp"
     }
   ],
   "stations": [
@@ -85,7 +85,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#CDE6D0",
       "accent": "#2F8568",
       "glow": "rgba(205, 230, 208, 0.72)",
-      "cardArt": "assets/cards/art/voi.png",
+      "cardArt": "assets/cards/art/voi.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 43,
@@ -134,7 +134,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#FFD2B1",
       "accent": "#D95B26",
       "glow": "rgba(255, 210, 177, 0.72)",
-      "cardArt": "assets/cards/art/huou-cao-co.png",
+      "cardArt": "assets/cards/art/huou-cao-co.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 35,
@@ -183,7 +183,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#F4E894",
       "accent": "#D97724",
       "glow": "rgba(244, 232, 148, 0.70)",
-      "cardArt": "assets/cards/art/capybara.png",
+      "cardArt": "assets/cards/art/capybara.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 35,
@@ -232,7 +232,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#FFE0B5",
       "accent": "#D46A1E",
       "glow": "rgba(255, 224, 181, 0.70)",
-      "cardArt": "assets/cards/art/meerkat.png",
+      "cardArt": "assets/cards/art/meerkat.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 38,
@@ -281,7 +281,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#FAD4DC",
       "accent": "#C94A6A",
       "glow": "rgba(250, 212, 220, 0.70)",
-      "cardArt": "assets/cards/art/gau-cho.png",
+      "cardArt": "assets/cards/art/gau-cho.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 22,
@@ -330,7 +330,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#CFE8FA",
       "accent": "#2E78B5",
       "glow": "rgba(207, 232, 250, 0.72)",
-      "cardArt": "assets/cards/art/gau-meo.png",
+      "cardArt": "assets/cards/art/gau-meo.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 70,
@@ -379,7 +379,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#E2DAF5",
       "accent": "#6A4FB3",
       "glow": "rgba(226, 218, 245, 0.72)",
-      "cardArt": "assets/cards/art/te-giac-trang.png",
+      "cardArt": "assets/cards/art/te-giac-trang.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 79,
@@ -428,7 +428,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#FFD5C2",
       "accent": "#D95326",
       "glow": "rgba(255, 213, 194, 0.74)",
-      "cardArt": "assets/cards/art/ho-vang.png",
+      "cardArt": "assets/cards/art/ho-vang.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 13,
@@ -486,7 +486,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#D5EED1",
       "accent": "#3C8C40",
       "glow": "rgba(213, 238, 209, 0.72)",
-      "cardArt": "assets/cards/art/vuon-ma-vang.png",
+      "cardArt": "assets/cards/art/vuon-ma-vang.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 18,
@@ -535,7 +535,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#FFE0E9",
       "accent": "#D44C7A",
       "glow": "rgba(255, 224, 233, 0.74)",
-      "cardArt": "assets/cards/art/hong-hac.png",
+      "cardArt": "assets/cards/art/hong-hac.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 46,
@@ -584,7 +584,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#C9EFE8",
       "accent": "#1E8A7A",
       "glow": "rgba(201, 239, 232, 0.72)",
-      "cardArt": "assets/cards/art/cong.png",
+      "cardArt": "assets/cards/art/cong.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 54,
@@ -633,7 +633,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#DCE8C8",
       "accent": "#5A7D2C",
       "glow": "rgba(220, 232, 200, 0.72)",
-      "cardArt": "assets/cards/art/ca-sau.png",
+      "cardArt": "assets/cards/art/ca-sau.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 13.5,
@@ -682,7 +682,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#EFE3C8",
       "accent": "#9C6F32",
       "glow": "rgba(239, 227, 200, 0.72)",
-      "cardArt": "assets/cards/art/rua-sulcata.png",
+      "cardArt": "assets/cards/art/rua-sulcata.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 81,
@@ -731,7 +731,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#E9D6F5",
       "accent": "#8246AD",
       "glow": "rgba(233, 214, 245, 0.72)",
-      "cardArt": "assets/cards/art/ngua-lun.png",
+      "cardArt": "assets/cards/art/ngua-lun.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 23,
@@ -780,7 +780,7 @@ window.TAPTAP_FALLBACK_DATA = {
       "pastel": "#CBE6F7",
       "accent": "#236FA3",
       "glow": "rgba(203, 230, 247, 0.74)",
-      "cardArt": "assets/cards/art/ha-ma-lun.png",
+      "cardArt": "assets/cards/art/ha-ma-lun.webp",
       "introVideo": "intro-anim/tiger_v2_trim.mp4",
       "mapPin": {
         "x": 30,

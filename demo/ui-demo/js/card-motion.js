@@ -78,7 +78,7 @@
                   <div class="back-ornament-frame"></div>
 
                   <div class="back-header">
-                    <img class="back-logo-img" src="assets/logo/taptap_logo_brown_transparent.png" alt="Tap Tap" />
+                    <img class="back-logo-img" src="assets/logo/taptap_logo_brown_transparent.webp" alt="Tap Tap" />
                   </div>
 
                   <div class="back-fact-card">
