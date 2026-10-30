@@ -386,13 +386,13 @@
     if (progFill) progFill.style.width = `${pct}%`;
     if (wrappedBanner) wrappedBanner.classList.toggle('is-visible', count >= 15);
 
-    // U7 Badges Row (5 / 10 / 15) — wires assets/badges/badge_5.png, badge_10.png, badge_15.png when present
+    // U7 Badges Row (5 / 10 / 15) — wires assets/badges/tier_5.png, tier_10.png, tier_15.png when present
     const badgesGrid = document.getElementById('colBadgesGrid');
     if (badgesGrid && appData) {
       badgesGrid.innerHTML = appData.badges
         .map((b) => {
           const unlocked = count >= b.milestone;
-          const badgeImg = b.img || `assets/badges/badge_${b.milestone}.png`;
+          const badgeImg = b.img || `assets/badges/tier_${b.milestone}.png`;
           return `
             <div class="u7-badge-card ${unlocked ? 'is-unlocked' : ''}">
               <div class="u7-badge-art-wrap" style="background:${b.bg}; color:${b.accent};">

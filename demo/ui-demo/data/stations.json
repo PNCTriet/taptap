@@ -10,7 +10,7 @@
       "id": "badge-5",
       "milestone": 5,
       "title": "Mốc 5",
-      "img": "assets/badges/badge_5.png",
+      "img": "assets/badges/tier_5.png",
       "bg": "#FFF0D6",
       "accent": "#E67E22"
     },
@@ -18,7 +18,7 @@
       "id": "badge-10",
       "milestone": 10,
       "title": "Mốc 10",
-      "img": "assets/badges/badge_10.png",
+      "img": "assets/badges/tier_10.png",
       "bg": "#E1F6EC",
       "accent": "#2E8B67"
     },
@@ -26,7 +26,7 @@
       "id": "badge-15",
       "milestone": 15,
       "title": "Full 15",
-      "img": "assets/badges/badge_15.png",
+      "img": "assets/badges/tier_15.png",
       "bg": "#F3E5FC",
       "accent": "#7D3C98"
     }
