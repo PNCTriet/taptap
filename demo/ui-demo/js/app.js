@@ -583,7 +583,21 @@
   function renderScreen7Wrapped() {
     wrappedSlideIndex = 0;
     renderWrappedSlide();
+    const frame = document.getElementById('wrappedFrame');
+    if (frame) {
+      const n = state.collectedIds.length;
+      const q = state.quizCorrectCount || n * 3;
+      frame.src = `wrapped/index.html?n=${n}&s=${state.unlockedSecrets.length}&q=${q}&t=${Date.now()}`;
+    }
   }
+  window.addEventListener('message', (e) => {
+    if (e.data === 'taptap-wrapped-close') {
+      const f = document.getElementById('wrappedFrame');
+      if (f) f.src = 'about:blank';
+      const c = document.getElementById('wrappedCloseBtn');
+      if (c) c.click();
+    }
+  });
 
   function renderWrappedSlide() {
     const slides = getWrappedSlides();
