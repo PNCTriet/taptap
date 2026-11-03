@@ -1,0 +1,12 @@
+Use the two attached images as strict character and artwork references: image 1 is the exact tiger card artwork, image 2 is the same tiger mascot (orange tiger cub with dark-brown stripes, cream belly, pink blush cheeks, purple bandana eye-mask tied at the side, black-and-white gingham scarf knotted at the neck, green cape). Do not invent a different tiger; keep the same face shape, mask, scarf, cape, proportions and colors.
+
+Create a vertical 9:16 cinematic game-trailer key art frame, 3D stylized render in the quality of a Pixar / Nintendo game key art, soft global illumination, physically based materials. Moment: the "rare pull" card reveal at a tropical zoo in daytime.
+
+Composition with three clear depth layers:
+- Foreground: big glossy monstera and banana leaves framing the left and bottom-right edges, slightly out of focus (shallow depth of field), catching warm sunlight.
+- Midground (sharp focus, slightly above center): ONE thick collectible trading card floating at a dynamic 3/4 angle (rotated about 30 degrees, tilted toward camera), with visible card thickness of a few millimeters, rounded corners and a clean white sticker border. The card face shows the tiger artwork from image 1 printed on it. The card surface has a real holographic foil that reflects rainbow colors depending on the angle (cyan, violet, pink, gold bands following the tilt), a bright specular glint streak across it, and a warm golden rim light on the card edges. Popping out from the top of the card, the tiger mascot from image 2 rendered as a soft 3D vinyl toy / clay figure (matte soft-touch material, subtle subsurface scattering), leaning out with one paw raised and a joyful grin, cape fluttering.
+- Behind the card: an explosive burst of golden-white light rays radiating from the card center, with floating glitter particles, tiny star sparkles and soft bloom glow, slightly dimming the scene around it like a gacha rare pull.
+- Background: a sunny tropical zoo path with a wooden enclosure fence, palm trees and lush greenery, heavily blurred into soft bokeh circles, warm late-morning light, light haze.
+
+Color: warm sunlit greens and golden light, with the holographic foil as the most saturated element. Camera: 35mm lens, low angle looking slightly up at the card, cinematic contrast, high detail, crisp clean edges.
+No text, no letters, no numbers, no logos, no UI, no watermark. Not flat, not 2D vector, not photorealistic animals, no extra limbs, no deformed paws.

@@ -1,0 +1,13 @@
+Use the two attached images as strict character and artwork references: image 1 is the exact tiger card artwork, image 2 is the same tiger mascot (orange tiger cub with dark-brown stripes, cream belly, pink blush cheeks, purple bandana eye-mask, black-and-white gingham scarf, green cape). Do not invent a different tiger; keep the same face, mask, scarf, cape, proportions and colors.
+
+Create a vertical 9:16 cinematic mobile trading-card game trailer frame, in the style of a premium TCG pack-opening cinematic: 3D stylized render, dramatic lighting, high-end game key art quality.
+
+Moment: the rare pull at its peak. The tropical zoo scene has dimmed into deep dusk-indigo darkness (#141B3D to #2A1E5C), with only faint silhouettes of jungle leaves at the edges, so all light comes from the card.
+
+- Center: ONE thick premium collectible card floating at a sharp 3/4 angle (rotated about 35 degrees, slight tilt toward camera), visible card thickness, rounded corners, clean white sticker border with a thin gold inner edge. The card face shows the tiger artwork from image 1. The whole face is covered in a holographic rainbow foil that clearly reflects light differently across the tilted surface (iridescent cyan, violet, magenta, gold bands, fine diffraction sparkle texture), a bright diagonal specular glint, strong cyan and gold rim lights on the edges.
+- The tiger mascot from image 2 as a soft 3D vinyl-toy figure bursting half out of the card frame toward the viewer, cape billowing, fierce-cute roar pose, lit by the card's glow from below.
+- Behind the card: a powerful radial starburst of sharp light rays, concentric shockwave ring, hundreds of glowing particles and star sparkles flying toward camera, volumetric god rays, heavy bloom and lens glow, a few out-of-focus foreground particles for depth of field.
+- Below the card: a faint glowing magic circle on the ground reflecting the light.
+
+Camera: 50mm, slightly low angle, cinematic contrast, shallow depth of field, crisp detail.
+No text, no letters, no numbers, no logos, no UI, no watermark. Not flat, not 2D vector, no extra limbs, no deformed paws.
