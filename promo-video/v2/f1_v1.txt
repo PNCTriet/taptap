@@ -1,0 +1,11 @@
+Create a vertical 9:16 cinematic game-trailer key art frame, 3D stylized render in the quality of Pixar / Nintendo game key art, soft global illumination, warm daytime tropical light.
+
+Moment: the hook of the trailer, an extreme close-up of a young visitor tapping a smartphone on an NFC station at a tropical zoo.
+
+Composition with three clear depth layers:
+- Foreground: glossy monstera and fern leaves out of focus at the bottom and right edges.
+- Midground (sharp focus): a stylized young hand (soft 3D, clean cartoon-realistic proportions, short neat nails, a pastel mint scrunchie on the wrist) holding a modern smartphone, the phone's back touching the round face of a short chunky wooden NFC post. The post is made of warm honey-colored wood with rounded edges, topped by a round glossy white disc with a simple embossed paw-print icon and a small leaf, slightly glowing. At the exact contact point, bright cyan and white concentric ripple rings of light radiate outward through the air, with small sparkles, as if the tap released energy. The phone screen edges begin to glow white.
+- Background: a sunny zoo walkway with a wooden enclosure fence, a hint of a tiger enclosure with rocks and greenery, palm trees, heavily blurred into soft bokeh, warm haze.
+
+Color: warm sunlit greens and honey wood, with the cyan-white ripple as the brightest accent. Camera: 85mm macro feel, shallow depth of field, cinematic contrast, crisp detail on the hand, phone and post.
+No text, no letters, no numbers, no logos, no brand marks on the phone, no UI, no watermark. Not flat, not 2D vector, correct hand anatomy with five fingers, no extra fingers.
