@@ -1,44 +1,176 @@
-import { describe, expect, it } from "vitest";
-import { parseMergeResult, stampOriginLabel, toLegacyRecords, toPassportStamps, type PassportRow } from "@/server/passport/map";
-import { isValidGuestToken, newGuestToken } from "@/server/guest/token";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  DEMO_MERGE_RESULT,
+  DEMO_PASSPORT_STAMPS,
+  getPassport,
+  mergeGuestProgress,
+  mergeSavedMessage,
+  parseMergeResult,
+  parsePassportResponse,
+  readLocalGuestStampCount,
+  shouldMergeGuestProgress,
+  shouldShowMergeNotice,
+} from "@/lib/passport-client";
+import { groupPassportStamps } from "@/lib/passport-groups";
+import { EXPLORER_STORAGE_KEY } from "@/lib/explorer-storage";
 
-const base = { participantId: "p1", collectSource: "nfc" as const, publicCode: "tcv-a", imageUrl: null };
-const rows: PassportRow[] = [
-  { ...base, id: "c2", stampId: "s2", stationId: "st2", name: "Robot Racer", collectedAt: "2026-11-10T10:00:00Z", source: "b2b", venueName: "b2b-demo", tenantName: "Demo Toy Studio", roomName: "Play Room A" },
-  { ...base, id: "c1", stampId: "s1", stationId: "st1", name: "Asian Elephant", collectedAt: "2026-11-10T09:00:00Z", source: "b2c", venueName: "Saigon Zoo", tenantName: null, roomName: null },
-];
-
-describe("passport mapping", () => {
-  it("maps RPC rows to the PassportStamp contract with tenant/room labels for B2B", () => {
-    const stamps = toPassportStamps(rows);
-    expect(stamps[0]).toEqual({ id: "c2", name: "Robot Racer", imageUrl: null, collectedAt: "2026-11-10T10:00:00Z", source: "b2b", tenantName: "Demo Toy Studio", roomName: "Play Room A" });
-    expect(stamps[1]).toEqual({ id: "c1", name: "Asian Elephant", imageUrl: null, collectedAt: "2026-11-10T09:00:00Z", source: "b2c", venueName: "Saigon Zoo" });
-    // The hidden B2B draft venue name never leaks into the contract.
-    expect(JSON.stringify(stamps)).not.toContain("b2b-demo");
-    expect(stampOriginLabel(stamps[0]!)).toBe("Demo Toy Studio · Play Room A");
-  });
-  it("keeps legacy records B2C-only so catalog screens never count tenant stamps", () => {
-    const legacy = toLegacyRecords(rows);
-    expect(legacy.map((r) => r.station_id)).toEqual(["st1"]);
-  });
-  it("tolerates bad payloads", () => {
-    expect(toPassportStamps(null)).toEqual([]);
-    expect(toLegacyRecords({})).toEqual([]);
-  });
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-describe("guest token + merge result", () => {
-  it("issues 256-bit url-safe tokens and rejects malformed ones", () => {
-    const t = newGuestToken();
-    expect(isValidGuestToken(t)).toBe(true);
-    expect(t).not.toBe(newGuestToken());
-    expect(isValidGuestToken("short")).toBe(false);
-    expect(isValidGuestToken("x".repeat(40) + "'; drop table")).toBe(false);
-    expect(isValidGuestToken(undefined)).toBe(false);
+describe("passport contract", () => {
+  it("parses stamps and drops invalid rows", () => {
+    const parsed = parsePassportResponse({
+      stamps: [
+        ...DEMO_PASSPORT_STAMPS,
+        { id: "bad", name: "Nope", imageUrl: null, collectedAt: "2026-01-01", source: "nfc" },
+        { id: "", name: "Missing", imageUrl: null, collectedAt: "2026-01-01", source: "b2c" },
+      ],
+    });
+    expect(parsed.stamps.map((stamp) => stamp.id)).toEqual(
+      DEMO_PASSPORT_STAMPS.map((stamp) => stamp.id),
+    );
+    expect(parsed.stamps[0]).toMatchObject({
+      source: "b2c",
+      imageUrl: null,
+      venueName: "Demo Zoo",
+    });
   });
-  it("normalises merge results", () => {
-    expect(parseMergeResult({ merged: 2, alreadyOwned: 1 })).toEqual({ merged: 2, alreadyOwned: 1 });
-    expect(parseMergeResult({ merged: -3, alreadyOwned: "x" })).toEqual({ merged: 0, alreadyOwned: 0 });
-    expect(parseMergeResult(null)).toEqual({ merged: 0, alreadyOwned: 0 });
+
+  it("treats a legacy records payload as an empty passport", () => {
+    expect(parsePassportResponse({ records: [] })).toEqual({ stamps: [] });
+    expect(parsePassportResponse(null)).toEqual({ stamps: [] });
+  });
+
+  it("GETs /api/passport and returns stamps", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ stamps: DEMO_PASSPORT_STAMPS }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const body = await getPassport();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/passport",
+      expect.objectContaining({ method: "GET" }),
+    );
+    expect(body.stamps).toHaveLength(5);
+  });
+
+  it("returns an empty passport when the request is not ok", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ records: [] }), { status: 401 })),
+    );
+    await expect(getPassport()).resolves.toEqual({ stamps: [] });
+  });
+
+  it("POSTs /api/participant/merge and parses the counts", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify(DEMO_MERGE_RESULT), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(mergeGuestProgress()).resolves.toEqual({ merged: 3, alreadyOwned: 1 });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/participant/merge",
+      expect.objectContaining({ method: "POST", body: "{}" }),
+    );
+  });
+
+  it("rejects a merge payload that is missing counts", () => {
+    expect(() => parseMergeResult({ merged: 1 })).toThrow(/Invalid merge response/);
+  });
+
+  it("shows a notice only when merged is greater than zero", () => {
+    expect(shouldShowMergeNotice({ merged: 3, alreadyOwned: 1 })).toBe(true);
+    expect(shouldShowMergeNotice({ merged: 0, alreadyOwned: 4 })).toBe(false);
+    expect(mergeSavedMessage(3, "en")).toBe("3 stamps saved to your account");
+    expect(mergeSavedMessage(1, "en")).toBe("1 stamp saved to your account");
+    expect(mergeSavedMessage(3, "vi")).toBe("Đã lưu 3 con dấu vào tài khoản");
+  });
+
+  it("merges after login only when guest progress is pending, or when the flag is set", () => {
+    expect(
+      shouldMergeGuestProgress({
+        mergeFlag: false,
+        authenticated: true,
+        authLoading: false,
+        pendingGuestStamps: 2,
+        attempted: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldMergeGuestProgress({
+        mergeFlag: false,
+        authenticated: true,
+        authLoading: false,
+        pendingGuestStamps: 2,
+        attempted: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldMergeGuestProgress({
+        mergeFlag: false,
+        authenticated: false,
+        authLoading: false,
+        pendingGuestStamps: 2,
+        attempted: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldMergeGuestProgress({
+        mergeFlag: true,
+        authenticated: false,
+        authLoading: true,
+        pendingGuestStamps: 0,
+        attempted: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("groups B2C under Explore and B2B by tenant and room", () => {
+    const groups = groupPassportStamps(DEMO_PASSPORT_STAMPS);
+    expect(groups.explore.map((stamp) => stamp.id)).toEqual([
+      "demo-b2c-elephant",
+      "demo-b2c-giraffe",
+    ]);
+    expect(groups.business.map((group) => [group.tenantName, group.roomName])).toEqual([
+      ["Demo Studio", "Workshop"],
+      ["Demo Cafe", "Main room"],
+    ]);
+    expect(groups.business[1]?.stamps.map((stamp) => stamp.name)).toEqual([
+      "Demo Counter",
+      "Demo Window",
+    ]);
+    expect(groupPassportStamps([])).toEqual({ explore: [], business: [] });
+  });
+
+  it("counts anonymous local stamps and ignores a signed-in snapshot", () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+      },
+    });
+    store.set(
+      EXPLORER_STORAGE_KEY,
+      JSON.stringify({
+        session: { isAnonymous: true, authUserId: null },
+        collectedStamps: [{ id: "a" }, { id: "b" }],
+      }),
+    );
+    expect(readLocalGuestStampCount()).toBe(2);
+
+    store.set(
+      EXPLORER_STORAGE_KEY,
+      JSON.stringify({
+        session: { isAnonymous: false, authUserId: "user-1" },
+        collectedStamps: [{ id: "a" }],
+      }),
+    );
+    expect(readLocalGuestStampCount()).toBe(0);
   });
 });

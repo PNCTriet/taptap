@@ -1,22 +1,27 @@
-/** One collected stamp in the visitor passport (B2C venues and B2B tenant stations). */
-export interface PassportStamp {
+/** Collected stamp shown on the player passport. */
+export type PassportStampSource = "b2c" | "b2b";
+
+export type PassportStamp = {
   id: string;
   name: string;
   imageUrl: string | null;
   collectedAt: string;
-  source: "b2c" | "b2b";
+  source: PassportStampSource;
   venueName?: string;
   tenantName?: string;
   roomName?: string;
-}
+};
 
-export interface PassportResponse {
+/** `GET /api/passport` */
+export type PassportResponse = {
   stamps: PassportStamp[];
-}
+};
 
-export interface MergeResponse {
-  /** Stamps moved from the guest passport into the account. */
+/** `POST /api/participant/merge` */
+export type GuestMergeResult = {
   merged: number;
-  /** Guest stamps the account already had (deduped, not duplicated). */
   alreadyOwned: number;
-}
+};
+
+/** Alias used by the server mapping and context. */
+export type MergeResponse = GuestMergeResult;

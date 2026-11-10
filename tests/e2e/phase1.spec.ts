@@ -101,7 +101,11 @@ test.describe("B2C: CMS → NFC tag → collect once → passport", () => {
 
     // Passport shows the just-collected stamp.
     await visitor.goto("/passport");
-    await expect(visitor.getByTestId(`stamp-card-${stationId}`)).toHaveAttribute("data-state", "collected", { timeout: 20_000 });
+    const card = visitor
+      .locator('[data-testid^="passport-stamp-"], [data-testid="stamp-card-' + stationId + '"]')
+      .filter({ hasText: `${stationName} stamp` })
+      .first();
+    await expect(card).toHaveAttribute("data-state", "collected", { timeout: 20_000 });
     await ctx.close();
   });
 

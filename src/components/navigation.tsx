@@ -3,6 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { GuestMergeNotice } from "@/components/passport/guest-merge-notice";
 import { BookOpen, Compass, Map, ShieldCheck, User } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import { AppIcon } from "@/components/ui/app-icon";
@@ -129,6 +130,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
       <main className="flex-1 mx-auto w-full max-w-4xl px-4 pt-6 pb-28 md:pb-16">
         {children}
       </main>
+      <GuestMergeNotice />
 
       {/* Minimal Footer */}
       <footer className="border-t border-[#E6DECB]/60 py-6 pb-24 md:pb-6 text-xs text-[#78847E]">

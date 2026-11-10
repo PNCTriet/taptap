@@ -36,9 +36,11 @@ test("guest B2B stamp is merged into the account at sign-in and shows in the pas
 
   // 2. Guest passport already shows the B2B stamp, labelled by tenant / room.
   await page.goto("/passport");
-  const b2b = page.getByTestId("passport-b2b-stamp").filter({ hasText: "Puzzle Cube" });
-  await expect(b2b).toBeVisible({ timeout: 20_000 });
-  await expect(b2b.getByTestId("passport-b2b-origin")).toHaveText(/Demo Toy Studio/);
+  const business = page.getByTestId("passport-section-b2b");
+  await expect(business.getByText("Puzzle Cube").first()).toBeVisible({ timeout: 20_000 });
+  await expect(business.getByRole("heading", { name: "Demo Toy Studio" })).toBeVisible();
+  await expect(business.getByText("Play Room A").first()).toBeVisible();
+  await expect(page.getByTestId("passport-section-b2c").getByText("Asian Elephant").first()).toBeVisible();
 
   // Tenant stations never enter the public catalog.
   const catalog = await (await page.request.get("/api/catalog")).json();
@@ -46,10 +48,10 @@ test("guest B2B stamp is merged into the account at sign-in and shows in the pas
 
   // 3. Sign in -> server-side merge from the httpOnly cookie.
   await login(page, "OWNER", "/passport");
-  const notice = page.getByTestId("merge-notice");
-  await expect(notice).toContainText(/Moved 2 guest stamps/, { timeout: 20_000 });
+  const notice = page.getByTestId("guest-merge-notice");
+  await expect(notice.getByRole("heading", { name: "2 stamps saved to your account" })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("guest-merge-reveal")).toHaveAttribute("data-state", "settled", { timeout: 8000 });
   if (shots) await page.screenshot({ path: `${shots}/next-merge-notice.png` });
-  await expect(page.getByTestId("passport-b2b-stamp").filter({ hasText: "Puzzle Cube" })).toBeVisible();
   expect((await page.context().cookies()).some((c) => c.name === "tt_guest")).toBe(false);
 
   // Passport API (contract) has both sources.
@@ -60,9 +62,9 @@ test("guest B2B stamp is merged into the account at sign-in and shows in the pas
   // 4. Repeat merge is a no-op (idempotent); notice dismissed, mixed passport frame.
   const again = await (await page.request.post("/api/participant/merge")).json();
   expect(again).toMatchObject({ merged: 0, alreadyOwned: 0 });
-  await page.getByTestId("merge-notice").getByRole("button").click();
+  await page.getByTestId("guest-merge-done").click();
   await page.reload();
-  await expect(page.getByTestId("passport-b2b-stamp").first()).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId("merge-notice")).toHaveCount(0);
+  await expect(page.getByTestId("passport-section-b2b").getByText("Puzzle Cube").first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId("guest-merge-notice")).toHaveCount(0);
   if (shots) await page.screenshot({ path: `${shots}/next-passport-mixed.png` });
 });
