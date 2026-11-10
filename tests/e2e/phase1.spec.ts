@@ -181,7 +181,8 @@ test.describe("B2B: platform admin, tenant quota, roles, isolation", () => {
     await expect(page.getByTestId("room-name")).toHaveValue("E2E Room 2");
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/b2b/create-room")),
-      page.getByTestId("room-create").click(),
+      // Submit with Enter: on previews the Vercel toolbar can overlay the button.
+      page.getByTestId("room-name").press("Enter"),
     ]);
     expect(resp.status()).toBe(409);
     expect((await resp.json()).code).toBe("QUOTA_EXCEEDED");
