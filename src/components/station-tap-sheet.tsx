@@ -11,11 +11,10 @@ import {
 } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
-import { StationIllustration } from "@/components/station-artwork";
 import { AppIcon } from "@/components/ui/app-icon";
-import { Card3D } from "@/components/ui/card-3d";
-import { CardReveal } from "@/components/ui/card-reveal";
+import { CollectibleCard } from "@/components/ui/collectible-card";
 import { TiltButton, TiltProvider } from "@/components/ui/tilt-provider";
+import { cardArtSrc, resolveCardArt } from "@/lib/card-art";
 import {
   calculateDistanceMeters,
   formatDistance,
@@ -151,7 +150,7 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
 
           <Link
             href="/passport"
-            className="min-h-[48px] w-full inline-flex items-center justify-center rounded-full bg-[#176B61] text-white px-5 py-3 text-sm font-extrabold transition-transform active:scale-[0.97]"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-full bg-gouache-ink px-5 py-3 text-sm font-extrabold text-gouache-cream transition-transform active:scale-[0.97]"
           >
             {locale === "vi" ? "Mở hộ chiếu" : "Open Passport"}
           </Link>
@@ -166,37 +165,35 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
         <div className="flex justify-end">
           <TiltButton />
         </div>
-        <CardReveal
-          play={justSlammed}
-          name={t(liveStation.name)}
-          series={locale === "vi" ? "Thảo Cầm Viên" : "Saigon Zoo"}
-          skipLabel={locale === "vi" ? "Bỏ qua" : "Skip"}
-          celebrate={justSlammed}
-        >
-          <Card3D
+        <div className="flex justify-center">
+          <CollectibleCard
             name={t(liveStation.name)}
-            series={locale === "vi" ? "Nhà thám hiểm" : "Zoo Explorer"}
-            code={liveStation.tag.publicCode}
+            series={locale === "vi" ? "Thảo Cầm Viên" : "Saigon Zoo"}
             fact={t(liveStation.funFact)}
+            imageSrc={(() => {
+              const art = resolveCardArt(liveStation.slug, t(liveStation.name), liveStation.stamp.name.en);
+              return art ? cardArtSrc(art, true) : null;
+            })()}
             pastel={CARD_THEME[liveStation.stamp.accentColor].pastel}
             accent={CARD_THEME[liveStation.stamp.accentColor].accent}
+            code={liveStation.tag.publicCode}
             titleAs="h1"
+            reveal={justSlammed}
+            testId="station-card"
             flipHint={locale === "vi" ? "Chạm để lật" : "Tap to flip"}
-            sheetCloseLabel={locale === "vi" ? "Đóng" : "Close"}
-            stamped={collected || justSlammed}
-            sealLabel={locale === "vi" ? "ĐÃ ĐÓNG DẤU" : "STAMPED"}
-            sealDetail={`#${liveStation.stamp.sortOrder} · ${liveStation.tag.publicCode}`}
-            sealAnimate={justSlammed}
-            className="mx-auto h-[232px] w-[164px]"
-            art={
-              <StationIllustration
-                stationIdOrSlug={liveStation.id}
-                variant="card"
-                className="h-full w-full"
-              />
-            }
+            className="h-[320px] w-[214px]"
           />
-        </CardReveal>
+        </div>
+        {collected || justSlammed ? (
+          <p className="flex justify-center" aria-live="polite">
+            <span
+              data-testid="postmark-seal"
+              className="rounded-full bg-[#E6F3F1] px-3 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] text-[#176B61]"
+            >
+              {locale === "vi" ? "Đã đóng dấu" : "Stamped"} · #{liveStation.stamp.sortOrder}
+            </span>
+          </p>
+        ) : null}
 
         <div className="space-y-2 text-center">
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-[#176B61]">
@@ -233,7 +230,7 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
           <Link
             href="/passport"
             data-testid="open-passport-cta"
-            className="min-h-[52px] w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#176B61] hover:bg-[#12564E] text-white px-6 py-3.5 text-base font-extrabold shadow-md transition-all duration-150 active:scale-[0.97] cursor-pointer"
+            className="inline-flex min-h-[52px] w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-gouache-ink px-6 py-3.5 text-base font-extrabold text-gouache-cream shadow-[0_8px_22px_rgba(44,34,30,0.22)] transition-transform active:scale-[0.97]"
           >
             <span>
               {justSlammed

@@ -18,21 +18,37 @@ test.describe("next review frames", () => {
 
     // Guest taps a venue tag: card-open animation, then the settled card screen.
     await page.goto("/s/tcv-k9x2m4p8");
-    const reveal = page.locator(".ui-reveal").first();
-    await expect(reveal).toBeVisible({ timeout: 20_000 });
-    await page.waitForTimeout(350);
+    const card = page.getByTestId("station-card");
+    await expect(card).toBeVisible({ timeout: 20_000 });
+    await expect(card).toHaveAttribute("data-state", "intro", { timeout: 20_000 });
+    await page.waitForTimeout(150);
     await page.screenshot({ path: `${shots}/next-cards-open.png` });
+    await expect(card).toHaveAttribute("data-state", "settled", { timeout: 10_000 });
     await expect(page.getByTestId("postmark-seal")).toBeVisible({ timeout: 20_000 });
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(600);
     await page.screenshot({ path: `${shots}/next-station-or-card.png` });
     await page.screenshot({ path: `${shots}/next-cards-screen.png` });
 
     await login(page, "OWNER", "/passport");
     await expect(page.getByTestId("passport-section-b2b")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("Loading", { exact: true })).toHaveCount(0, { timeout: 20_000 });
     const done = page.getByTestId("guest-merge-done");
-    if (await done.isVisible().catch(() => false)) await done.click();
+    if (await done.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await page.screenshot({ path: `${shots}/next-merge-notice-v7.png` });
+      await done.click();
+    }
     await page.waitForTimeout(800);
     await page.screenshot({ path: `${shots}/next-passport.png` });
+
+    // Demo fixture: the three B2B demo stamps have no animal art and use the fallback card.
+    await page.goto("/passport?mock=1");
+    const business = page.getByTestId("passport-section-b2b");
+    for (const name of ["Demo Workshop", "Demo Counter", "Demo Window"]) {
+      await expect(business.getByText(name).first()).toBeAttached();
+    }
+    await business.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${shots}/next-passport-b2b-fallback.png` });
   });
 
   test("desktop 1440x900: tenant dashboard and CRM as tenant owner", async ({ browser }) => {

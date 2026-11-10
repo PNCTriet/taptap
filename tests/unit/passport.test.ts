@@ -12,6 +12,7 @@ import {
   shouldShowMergeNotice,
 } from "@/lib/passport-client";
 import { groupPassportStamps } from "@/lib/passport-groups";
+import { resolveCardArt } from "@/lib/card-art";
 import { EXPLORER_STORAGE_KEY } from "@/lib/explorer-storage";
 
 afterEach(() => {
@@ -146,6 +147,14 @@ describe("passport contract", () => {
       "Demo Window",
     ]);
     expect(groupPassportStamps([])).toEqual({ explore: [], business: [] });
+  });
+
+  it("maps station slugs to painted cards and falls back when none exist", () => {
+    expect(resolveCardArt("asian-elephant")?.src).toBe("/cards/elephant.webp");
+    expect(resolveCardArt("flamingo-lagoon")?.src).toBe("/cards/flamingo.webp");
+    expect(resolveCardArt("Demo Giraffe")?.frameSrc).toBe("/cards/frame-giraffe.webp");
+    expect(resolveCardArt("botanical-conservatory")).toBeNull();
+    expect(resolveCardArt("Demo Workshop")).toBeNull();
   });
 
   it("counts anonymous local stamps and ignores a signed-in snapshot", () => {

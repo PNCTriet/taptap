@@ -116,15 +116,15 @@ export function PassportView() {
               {emptyLabel}
             </p>
           ) : (
-            <StampGrid
-              stamps={groups.explore}
-              offset={0}
-              demo={mock}
-              detailsHint={detailsHint}
-              closeLabel={closeLabel}
-              locale={locale}
-              onSelect={setSelectedId}
-            />
+          <StampRail
+            stamps={groups.explore}
+            offset={0}
+            demo={mock}
+            detailsHint={detailsHint}
+            closeLabel={closeLabel}
+            locale={locale}
+            onSelect={setSelectedId}
+          />
           )}
         </section>
 
@@ -167,7 +167,7 @@ export function PassportView() {
                       {vi ? "Doanh nghiệp" : "Business"}
                     </span>
                   </div>
-                  <StampGrid
+                  <StampRail
                     stamps={group.stamps}
                     offset={offset < 0 ? 0 : offset}
                     demo={mock}
@@ -193,11 +193,7 @@ export function PassportView() {
         {selected ? (
           <div className="space-y-3">
             <div className="h-36 overflow-hidden rounded-[var(--radius-control)] bg-gouache-bg">
-              <StampArt
-                stamp={selected}
-                pastel={selectedPalette.pastel}
-                animal={selectedPalette.animal}
-              />
+              <StampArt stamp={selected} pastel={selectedPalette.pastel} />
             </div>
             {mock ? (
               <p className="text-[11px] font-bold uppercase tracking-[0.08em] text-gouache-ink">
@@ -224,7 +220,7 @@ export function PassportView() {
   );
 }
 
-function StampGrid({
+function StampRail({
   stamps,
   offset,
   demo,
@@ -242,7 +238,7 @@ function StampGrid({
   onSelect: (id: string) => void;
 }) {
   return (
-    <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3 md:grid-cols-4">
+    <ul className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {stamps.map((stamp, index) => (
         <li
           key={stamp.id}
@@ -252,7 +248,7 @@ function StampGrid({
               : `passport-stamp-${stamp.id}`
           }
           data-state="collected"
-          className="min-w-0"
+          className={`shrink-0 snap-start ${index === 0 ? "w-[58%]" : "w-[46%]"}`}
         >
           <StampThumbnail
             stamp={stamp}

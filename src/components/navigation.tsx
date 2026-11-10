@@ -61,16 +61,16 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FFF8EB] text-[#272E2B]">
+    <div className="flex min-h-screen flex-col bg-gouache-bg text-gouache-ink">
       {/* Minimal Top Header */}
-      <header className="sticky top-0 z-30 border-b border-[#E6DECB]/80 bg-[#FFF8EB]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-gouache-line/80 bg-gouache-bg/90 backdrop-blur-md">
         <div className="mx-auto max-w-4xl px-4 h-16 flex items-center justify-between gap-3">
           <Link
             href="/explore"
             className="flex items-center gap-2.5 group transition-transform duration-150 active:scale-[0.97]"
           >
-            <div className="h-9 w-9 rounded-xl bg-[#176B61] text-white flex items-center justify-center shadow-xs group-hover:bg-[#12564E] transition-colors">
-              <AppIcon icon={Compass} size="sm" className="text-[#F2C653]" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gouache-ink text-gouache-cream transition-transform group-active:scale-95">
+              <AppIcon icon={Compass} size="sm" className="text-player-pastel" />
             </div>
             <span className="font-display-serif text-lg font-extrabold tracking-tight text-[#272E2B]">
               TAPTAP
@@ -80,7 +80,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
           {/* Desktop Navigation */}
           <nav
             aria-label="Primary Navigation"
-            className="hidden md:flex items-center gap-1 rounded-full border border-[#E6DECB] bg-white p-1"
+            className="hidden items-center gap-1 rounded-full border border-gouache-line bg-gouache-cream p-1 md:flex"
           >
             {navItems.map((item) => {
               return (
@@ -89,8 +89,8 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all duration-150 active:scale-[0.97] ${
                     item.isActive
-                      ? "bg-[#176B61] text-white"
-                      : "text-[#525D58] hover:text-[#272E2B] hover:bg-[#F5EFE2]"
+                      ? "bg-gouache-ink text-gouache-cream"
+                      : "text-gouache-muted hover:bg-white hover:text-gouache-ink"
                   }`}
                 >
                   <AppIcon icon={item.icon} size="xs" />
@@ -99,8 +99,8 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                     <span
                       className={`type-mono rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
                         item.isActive
-                          ? "bg-white/20 text-white"
-                          : "bg-[#E6F3F1] text-[#176B61]"
+                          ? "bg-white/20 text-gouache-cream"
+                          : "bg-player-pastel text-gouache-ink"
                       }`}
                     >
                       {item.badge}
@@ -113,8 +113,8 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
               href="/admin"
               className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all duration-150 active:scale-[0.97] ${
                 isAdminRoute
-                  ? "bg-[#176B61] text-white"
-                  : "text-[#525D58] hover:text-[#272E2B] hover:bg-[#F5EFE2]"
+                  ? "bg-gouache-ink text-gouache-cream"
+                  : "text-gouache-muted hover:bg-white hover:text-gouache-ink"
               }`}
             >
               <AppIcon icon={ShieldCheck} size="xs" />
@@ -133,7 +133,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
       <GuestMergeNotice />
 
       {/* Minimal Footer */}
-      <footer className="border-t border-[#E6DECB]/60 py-6 pb-24 md:pb-6 text-xs text-[#78847E]">
+      <footer className="border-t border-gouache-line/60 py-6 pb-24 text-xs text-gouache-muted md:pb-6">
         <div className="mx-auto max-w-4xl px-4 flex items-center justify-between">
           <span>TAPTAP • Tap. Explore. Collect.</span>
           <span className="flex items-center gap-3">
@@ -151,7 +151,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
       {!isAdminRoute && (
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-[#E6DECB] bg-white/95 backdrop-blur-md px-2 py-1.5"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-gouache-line bg-gouache-cream/95 px-2 py-1.5 backdrop-blur-md md:hidden"
       >
         <div className="relative mx-auto max-w-md grid grid-cols-4 gap-1.5">
           <div
@@ -161,7 +161,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
             }}
             className="pointer-events-none absolute -top-1.5 left-0 w-1/4 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
           >
-            <span className="h-1 w-9 rounded-b-full bg-[#176B61]" />
+            <span className="h-1 w-9 rounded-b-full bg-gouache-ink" />
           </div>
 
           {navItems.map((item) => {
@@ -171,8 +171,8 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                 href={item.href}
                 className={`min-h-[48px] flex flex-col items-center justify-center rounded-2xl px-2 py-1 text-xs font-extrabold transition-all duration-150 active:scale-[0.95] ${
                   item.isActive
-                    ? "bg-[#176B61] text-white"
-                    : "text-[#525D58] hover:bg-[#F5EFE2]"
+                    ? "bg-gouache-ink text-gouache-cream"
+                    : "text-gouache-muted hover:bg-gouache-bg"
                 }`}
               >
                 <div className="flex items-center justify-center">
@@ -181,8 +181,8 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                     <span
                       className={`type-mono ml-1 rounded-full px-1.5 text-[10px] font-extrabold ${
                         item.isActive
-                          ? "bg-[#F2C653] text-[#272E2B]"
-                          : "bg-[#E6F3F1] text-[#176B61]"
+                        ? "bg-player-pastel text-gouache-ink"
+                        : "bg-gouache-line text-gouache-ink"
                       }`}
                     >
                       {item.badge}

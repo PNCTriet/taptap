@@ -41,12 +41,21 @@
   --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-in-swift: cubic-bezier(0.55, 0, 1, 0.45);
+  /* CSS stand-ins for the GSAP eases in docs/DESIGN_TOKENS.md */
+  --ease-power2-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-power3-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-back-out: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   --duration-instant: 120ms;
   --duration-fast: 180ms;
   --duration-base: 320ms;
   --duration-slow: 680ms;
   --duration-reveal: 880ms;
+  --duration-tilt: 260ms;
+  --duration-holo: 320ms;
+  --duration-flip: 620ms;
+  --duration-fly: 880ms;
+  --duration-nfc: 440ms;
 }
 
 :root {
