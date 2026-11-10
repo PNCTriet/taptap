@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createClientSupabaseClient } from "@/lib/supabase/client";
 import { useExplorer } from "@/context/explorer-context";
 import { Button, Card, Empty, Field, Notice, Select, StatusPill, TextInput, inputClass, useTx } from "./kit";
+import { CrmSheet } from "@/components/crm/sheet";
+import { ListSkeleton } from "@/components/crm/states";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,74 +144,74 @@ export function ResourceManager({ config }: { config: ResourceConfig }) {
   return (
     <div className="space-y-4" data-testid={config.testId}>
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-[28px] font-bold tracking-tight text-[#1D1D1F]">{tx(config.title[0], config.title[1])}</h1>
+        <h1 className="text-[28px] font-semibold tracking-tight text-[#1D1D1F]">{tx(config.title[0], config.title[1])}</h1>
         <Button onClick={startCreate} data-testid={`${config.testId}-new`}>+ {tx("New", "Thêm")}</Button>
       </div>
       {notice ? <Notice tone="success" testId={`${config.testId}-notice`}>{notice}</Notice> : null}
       {error && !open ? <Notice testId={`${config.testId}-error`}>{error}</Notice> : null}
 
-      {open ? (
-        <Card>
-          <form onSubmit={save} className="space-y-3" data-testid={`${config.testId}-form`}>
-            {config.fields.map((f) => (
-              <Field key={f.key} label={tx(f.label[0], f.label[1])} hint={f.hint ? tx(f.hint[0], f.hint[1]) : undefined}>
-                {f.type === "textarea" ? (
-                  <textarea
-                    className={`${inputClass} min-h-[88px] py-2`}
-                    value={values[f.key] ?? ""}
-                    name={f.key}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  />
-                ) : f.type === "select" ? (
-                  <Select
-                    name={f.key}
-                    required={f.required}
-                    value={values[f.key] ?? ""}
-                    onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
-                  >
-                    {!f.options && !f.required ? <option value="">—</option> : null}
-                    {(f.options ?? options[f.key] ?? []).map((o) => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </Select>
-                ) : (
-                  <TextInput
-                    name={f.key}
-                    type={f.type === "number" ? "number" : "text"}
-                    step={f.type === "number" ? "any" : undefined}
-                    required={f.required}
-                    placeholder={f.placeholder}
-                    value={values[f.key] ?? ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setValues((v) => {
-                        const next = { ...v, [f.key]: val };
-                        if (f.key === "name" && "slug" in v && !editing) next.slug = slugify(val);
-                        return next;
-                      });
-                    }}
-                  />
-                )}
-              </Field>
-            ))}
-            {error ? <Notice testId={`${config.testId}-error`}>{error}</Notice> : null}
-            <div className="flex gap-2">
-              <Button type="submit" disabled={saving} data-testid={`${config.testId}-save`}>
-                {saving ? "…" : tx("Save", "Lưu")}
-              </Button>
-              <Button tone="secondary" onClick={() => setOpen(false)}>{tx("Cancel", "Huỷ")}</Button>
-            </div>
-          </form>
-        </Card>
-      ) : null}
+      <CrmSheet
+        open={open}
+        title={editing ? tx("Edit", "Sửa") : tx("New", "Thêm")}
+        onClose={() => setOpen(false)}
+      >
+        <form onSubmit={save} className="space-y-3" data-testid={`${config.testId}-form`}>
+          {config.fields.map((f) => (
+            <Field key={f.key} label={tx(f.label[0], f.label[1])} hint={f.hint ? tx(f.hint[0], f.hint[1]) : undefined}>
+              {f.type === "textarea" ? (
+                <textarea
+                  className={`${inputClass} min-h-[88px] py-2`}
+                  value={values[f.key] ?? ""}
+                  name={f.key}
+                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                />
+              ) : f.type === "select" ? (
+                <Select
+                  name={f.key}
+                  required={f.required}
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => setValues((v) => ({ ...v, [f.key]: e.target.value }))}
+                >
+                  {!f.options && !f.required ? <option value="">—</option> : null}
+                  {(f.options ?? options[f.key] ?? []).map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </Select>
+              ) : (
+                <TextInput
+                  name={f.key}
+                  type={f.type === "number" ? "number" : "text"}
+                  step={f.type === "number" ? "any" : undefined}
+                  required={f.required}
+                  placeholder={f.placeholder}
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setValues((v) => {
+                      const next = { ...v, [f.key]: val };
+                      if (f.key === "name" && "slug" in v && !editing) next.slug = slugify(val);
+                      return next;
+                    });
+                  }}
+                />
+              )}
+            </Field>
+          ))}
+          {error ? <Notice testId={`${config.testId}-error`}>{error}</Notice> : null}
+          <div className="flex gap-2">
+            <Button type="submit" disabled={saving} data-testid={`${config.testId}-save`}>
+              {saving ? "…" : tx("Save", "Lưu")}
+            </Button>
+            <Button tone="secondary" onClick={() => setOpen(false)}>{tx("Cancel", "Huỷ")}</Button>
+          </div>
+        </form>
+      </CrmSheet>
 
-      <Card className="divide-y divide-black/[0.06] p-0">
-        {loading ? (
-          <Empty>{tx("Loading…", "Đang tải…")}</Empty>
-        ) : rows.length === 0 ? (
-          <Empty>{tx("Nothing here yet.", "Chưa có dữ liệu.")}</Empty>
-        ) : (
-          rows.map((row) => (
+      {loading ? <ListSkeleton /> : rows.length === 0 ? (
+        <Empty>{tx("Nothing here yet.", "Chưa có dữ liệu.")}</Empty>
+      ) : (
+        <Card className="divide-y divide-black/[0.06] p-0">
+          {rows.map((row) => (
             <div key={row.id} className="flex flex-wrap items-center gap-3 px-4 py-3" data-testid={`${config.testId}-row`}>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-semibold text-[#1D1D1F]">{config.primary(row)}</div>
@@ -217,13 +219,13 @@ export function ResourceManager({ config }: { config: ResourceConfig }) {
               </div>
               {config.status?.(row) ? <StatusPill status={config.status(row)!} /> : null}
               {config.rowActions?.(row)}
-              <Button tone="plain" className="min-h-[36px] px-2" onClick={() => startEdit(row)}>
+              <Button tone="plain" className="min-h-11 px-2" onClick={() => startEdit(row)}>
                 {locale === "vi" ? "Sửa" : "Edit"}
               </Button>
             </div>
-          ))
-        )}
-      </Card>
+          ))}
+        </Card>
+      )}
     </div>
   );
 }

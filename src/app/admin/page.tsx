@@ -1,57 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { DailyChart, MetricGrid } from "@/components/crm/dashboard";
+import { DashboardSkeleton, EmptyState, PageHeader } from "@/components/crm/states";
+import { useCrmActivity } from "@/components/crm/use-crm";
 import { AdminShell } from "@/components/admin-shell";
-import { Card, useTx } from "@/components/console/kit";
-import { createClientSupabaseClient } from "@/lib/supabase/client";
-
-const RESOURCES = [
-  { table: "venues", href: "/admin/venues", en: "Venues", vi: "Điểm đến" },
-  { table: "collections", href: "/admin/collections", en: "Collections", vi: "Bộ sưu tập" },
-  { table: "stations", href: "/admin/stations", en: "Stations", vi: "Trạm" },
-  { table: "stamps", href: "/admin/stamps", en: "Stamps", vi: "Con dấu" },
-  { table: "nfc_tags", href: "/admin/tags", en: "Active tags", vi: "Thẻ đang bật", active: true },
-];
+import { Notice, useTx } from "@/components/console/kit";
 
 export default function AdminDashboardPage() {
   const tx = useTx();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabase = useMemo(() => createClientSupabaseClient() as unknown as SupabaseClient<any>, []);
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  const [taps, setTaps] = useState<number | null>(null);
-
-  useEffect(() => {
-    RESOURCES.forEach(async (r) => {
-      let q = supabase.from(r.table).select("id", { count: "exact", head: true }).is("tenant_id", null);
-      if (r.active) q = q.eq("status", "active");
-      const { count } = await q;
-      setCounts((c) => ({ ...c, [r.table]: count ?? 0 }));
-    });
-    void supabase
-      .from("collected_stamps")
-      .select("id", { count: "exact", head: true })
-      .then(({ count }) => setTaps(count ?? 0));
-  }, [supabase]);
+  const crm = useCrmActivity("all");
 
   return (
-    <AdminShell title={tx("B2C CMS", "B2C CMS")} subtitle={tx("Venue → collection → station → stamp → tag", "Điểm đến → bộ sưu tập → trạm → dấu → thẻ")}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {RESOURCES.map((r) => (
-          <Link key={r.table} href={r.href}>
-            <Card className="space-y-1 transition hover:ring-2 hover:ring-[#1F4B66]/20">
-              <div className="text-[28px] font-bold tabular-nums text-[#1D1D1F]" data-testid={`count-${r.table}`}>
-                {counts[r.table] ?? "–"}
-              </div>
-              <div className="text-[14px] text-[#6E6E73]">{tx(r.en, r.vi)}</div>
-            </Card>
-          </Link>
-        ))}
-        <Card className="space-y-1">
-          <div className="text-[28px] font-bold tabular-nums text-[#1D1D1F]">{taps ?? "–"}</div>
-          <div className="text-[14px] text-[#6E6E73]">{tx("Stamps collected", "Lượt nhận dấu")}</div>
-        </Card>
+    <AdminShell>
+      <div className="space-y-4" data-testid="admin-dashboard">
+        <PageHeader
+          title={tx("Overview", "Tổng quan")}
+          subtitle={tx("Every tenant and the public catalog · last 30 days", "Mọi tenant và catalog công khai · 30 ngày gần đây")}
+          action={
+            <Link href="/admin/stations" className="inline-flex min-h-11 items-center rounded-xl bg-[#1F4B66] px-4 text-[15px] font-semibold text-white">
+              {tx("Add station", "Thêm trạm")}
+            </Link>
+          }
+        />
+        {crm.loading && !crm.data ? <DashboardSkeleton /> : null}
+        {crm.error && crm.code !== "MIGRATION_REQUIRED" ? <Notice>{crm.error}</Notice> : null}
+        {crm.code === "MIGRATION_REQUIRED" ? <EmptyState title={tx("Analytics not ready", "Chưa có số liệu")} body={crm.error ?? ""} /> : null}
+        {crm.data ? (
+          <>
+            <MetricGrid overview={crm.data.overview} />
+            <DailyChart points={crm.data.overview.daily} />
+          </>
+        ) : null}
+        <Link href="/admin/b2b" className="block rounded-2xl bg-white px-4 py-3 text-[15px] font-semibold text-[#1F4B66] ring-1 ring-black/[0.06]">
+          {tx("Plan usage by tenant", "Mức dùng gói theo tenant")}
+        </Link>
       </div>
     </AdminShell>
   );
