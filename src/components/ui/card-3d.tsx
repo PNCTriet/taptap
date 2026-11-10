@@ -24,6 +24,8 @@ export type Card3DProps = {
   sealAnimate?: boolean;
   /** Idle figure-8 until the pointer interacts. */
   idleDemo?: boolean;
+  /** Tap opens this handler instead of flipping the card. */
+  onSelect?: () => void;
 };
 
 export function Card3D({
@@ -44,6 +46,7 @@ export function Card3D({
   sealDetail,
   sealAnimate = false,
   idleDemo = false,
+  onSelect,
 }: Card3DProps) {
   const slotRef = useRef<HTMLDivElement>(null);
   const suppressClickRef = useRef(false);
@@ -58,12 +61,16 @@ export function Card3D({
     window.requestAnimationFrame(() => {
       toggleLock.current = false;
     });
+    if (onSelect) {
+      onSelect();
+      return;
+    }
     if (reduced) {
       setSheetOpen(true);
       return;
     }
     setFlipped((value) => !value);
-  }, [reduced]);
+  }, [onSelect, reduced]);
 
   useTilt(slotRef, { demo: idleDemo && !reduced, suppressClickRef });
 

@@ -18,6 +18,7 @@ import {
   PILOT_VENUE,
 } from "@/features/pilot/sample-data";
 import { isSupabasePublicEnvConfigured } from "@/lib/env";
+import { EXPLORER_STORAGE_KEY } from "@/lib/explorer-storage";
 import { createClientSupabaseClient } from "@/lib/supabase/client";
 import type { StampSource, SupportedLocale } from "@/types/database.types";
 import type {
@@ -32,7 +33,7 @@ import type {
   RedemptionRecord,
 } from "@/types/domain";
 
-const STORAGE_KEY = "taptap_explorer_state_v1";
+const STORAGE_KEY = EXPLORER_STORAGE_KEY;
 
 export interface AuthUserProfile {
   id: string;
