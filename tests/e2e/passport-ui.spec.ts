@@ -44,6 +44,11 @@ test.describe("passport UI mobile frames", () => {
     await page.getByRole("button", { name: "EN", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Passport");
 
+    await page.screenshot({
+      path: path.join(outDir, "passport-mixed-390x844.png"),
+      fullPage: false,
+    });
+
     await page.getByRole("button", { name: "Demo Elephant" }).click();
     const sheet = page.getByTestId("passport-stamp-sheet");
     await expect(sheet).toBeVisible();
@@ -51,11 +56,6 @@ test.describe("passport UI mobile frames", () => {
     await expect(sheet.getByText("Explore")).toBeVisible();
     await sheet.getByRole("button", { name: "Close" }).click();
     await expect(sheet).toHaveCount(0);
-
-    await page.screenshot({
-      path: path.join(outDir, "passport-mixed-390x844.png"),
-      fullPage: false,
-    });
   });
 
   test("guest merge stays quiet when nothing new was saved", async ({ page }) => {

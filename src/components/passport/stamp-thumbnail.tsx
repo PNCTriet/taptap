@@ -1,15 +1,16 @@
 "use client";
 
-import { Card3D } from "@/components/ui/card-3d";
-import { GouacheArt } from "@/components/ui/gouache-art";
+import Image from "next/image";
+import { CollectibleCard } from "@/components/ui/collectible-card";
 import { StationIllustration } from "@/components/station-artwork";
+import { cardArtSrc, resolveCardArt } from "@/lib/card-art";
 import type { PassportStampCard } from "@/lib/passport-groups";
 
 const PALETTES = [
-  { pastel: "#cde6d0", accent: "#2f8568", animal: "elephant" },
-  { pastel: "#ffd2b1", accent: "#d95b26", animal: "giraffe" },
-  { pastel: "#f4e894", accent: "#d97724", animal: "capybara" },
-  { pastel: "#d8cfec", accent: "#6f42c1", animal: "orangutan" },
+  { pastel: "#cde6d0", accent: "#2f8568" },
+  { pastel: "#ffd2b1", accent: "#d95b26" },
+  { pastel: "#f4e894", accent: "#d97724" },
+  { pastel: "#d8cfec", accent: "#6f42c1" },
 ] as const;
 
 type Palette = (typeof PALETTES)[number];
@@ -18,17 +19,34 @@ export function paletteForStamp(index: number): Palette {
   return PALETTES[index % PALETTES.length] ?? PALETTES[0];
 }
 
+export function stampImage(stamp: PassportStampCard): string | null {
+  const painted = resolveCardArt(stamp.name, stamp.legacyStationId, stamp.id);
+  if (painted) return cardArtSrc(painted, true);
+  return null;
+}
+
 export function StampArt({
   stamp,
   pastel,
-  animal,
-  className = "h-full w-full object-cover",
+  className = "h-full w-full object-contain",
 }: {
   stamp: PassportStampCard;
   pastel: string;
-  animal: Palette["animal"];
+  animal?: string;
   className?: string;
 }) {
+  const src = stampImage(stamp);
+  if (src) {
+    return (
+      <Image
+        src={src}
+        alt=""
+        width={800}
+        height={1192}
+        className={className}
+      />
+    );
+  }
   if (stamp.legacyStationId) {
     return (
       <StationIllustration
@@ -38,23 +56,15 @@ export function StampArt({
       />
     );
   }
-  if (stamp.imageUrl) {
-    return (
-      <div
-        aria-hidden
-        className={`${className} bg-cover bg-center`}
-        style={{ backgroundImage: `url(${JSON.stringify(stamp.imageUrl)})` }}
-      />
-    );
-  }
+  const initial = stamp.name.trim().charAt(0).toUpperCase() || "T";
   return (
     <div
-      className="flex h-full w-full items-center justify-center overflow-hidden"
-      style={{ backgroundColor: pastel }}
+      className={`flex items-center justify-center ${className}`}
+      style={{ background: `linear-gradient(165deg, ${pastel}, #fffdf8)` }}
     >
-      <div className="h-full max-w-full aspect-[200/230] [&_svg]:h-full [&_svg]:w-auto">
-        <GouacheArt animal={animal} pastel={pastel} />
-      </div>
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-gouache-ink font-gouache text-2xl text-gouache-cream">
+        {initial}
+      </span>
     </div>
   );
 }
@@ -65,9 +75,6 @@ export function StampThumbnail({
   series,
   fact,
   flipHint,
-  closeLabel,
-  sealLabel,
-  sealDetail,
   demo,
   onSelect,
 }: {
@@ -84,28 +91,18 @@ export function StampThumbnail({
 }) {
   const palette = paletteForStamp(index);
   return (
-    <Card3D
+    <CollectibleCard
       name={stamp.name}
       series={series}
-      code={stamp.source === "b2b" ? "B2B" : "B2C"}
       fact={fact}
+      imageSrc={stampImage(stamp)}
       pastel={palette.pastel}
       accent={palette.accent}
+      code={stamp.source === "b2b" ? "B2B" : "B2C"}
       demoLabel={demo ? "Demo" : undefined}
       flipHint={flipHint}
-      sheetCloseLabel={closeLabel}
-      stamped
-      sealLabel={sealLabel}
-      sealDetail={sealDetail}
       onSelect={onSelect}
-      className="h-[220px] w-full"
-      art={
-        <StampArt
-          stamp={stamp}
-          pastel={palette.pastel}
-          animal={palette.animal}
-        />
-      }
+      className="aspect-[2/3] w-full"
     />
   );
 }
