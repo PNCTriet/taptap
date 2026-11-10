@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/server/auth/session";
-import { resolveCrmScope } from "@/server/crm/access";
+import { maskEmail, resolveCrmScope, shouldMaskEmails } from "@/server/crm/access";
 import { aggregateCrm, buildVisitorRows, windowFor, zonedStartIso } from "@/server/crm/aggregate";
 import { parseCrmActivity } from "@/server/crm/parse";
 import { mapDbError } from "@/server/quota/errors";
@@ -79,6 +79,15 @@ export async function GET(request: Request) {
   }
 
   const parsed = parseCrmActivity(data);
+  // Defense in depth: crm_activity already masks for tenant viewers; mask again here.
+  const memberships = (membershipRows ?? []) as { tenant_id: string; role: string }[];
+  const callerRole =
+    decision.scope === "tenant"
+      ? memberships.find((row) => row.tenant_id === decision.tenantId)?.role ?? null
+      : null;
+  if (shouldMaskEmails({ isPlatformAdmin, scope: decision.scope, role: callerRole })) {
+    parsed.people = parsed.people.map((person) => ({ ...person, email: maskEmail(person.email) }));
+  }
   const input = {
     timeZone: TIME_ZONE,
     from: range.from,

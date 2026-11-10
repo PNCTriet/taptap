@@ -46,3 +46,24 @@ export function resolveCrmScope(input: {
   if (!membership) return { ok: false, status: 403, code: "FORBIDDEN" };
   return { ok: true, scope: "tenant", tenantId: membership.tenantId };
 }
+
+/** Roles that may see full visitor emails in a tenant CRM. Viewers get masked addresses. */
+const FULL_EMAIL_ROLES = new Set(["owner", "admin", "editor"]);
+
+export function shouldMaskEmails(input: {
+  isPlatformAdmin: boolean;
+  scope: "tenant" | "b2c" | "all";
+  role: string | null | undefined;
+}): boolean {
+  if (input.isPlatformAdmin || input.scope !== "tenant") return false;
+  return !FULL_EMAIL_ROLES.has(input.role ?? "");
+}
+
+/** `alice@example.com` -> `a***@example.com`. Mirrors the SQL mask in crm_activity. */
+export function maskEmail(email: string | null): string | null {
+  if (email == null) return null;
+  const at = email.indexOf("@");
+  if (at <= 0) return "***";
+  if (email.slice(1, at) === "***") return email; // already masked by the database
+  return `${email[0]}***${email.slice(at)}`;
+}
