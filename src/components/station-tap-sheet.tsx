@@ -43,6 +43,7 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
     stations,
     isStationCollected,
     collectStamp,
+    refreshPassport,
   } = useExplorer();
 
   const [justSlammed, setJustSlammed] = useState(false);
@@ -72,7 +73,8 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
 
   // Auto-collect immediately once authenticated with Google
   useEffect(() => {
-    if (authLoading || !isAuthenticated || hasError || !liveStation) return;
+    // Guests collect too (server binds them to an httpOnly guest cookie; merged at sign-in).
+    if (authLoading || hasError || !liveStation) return;
     if (autoCollectTriggeredRef.current) return;
     autoCollectTriggeredRef.current = true;
 
@@ -80,8 +82,9 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
       if (result.newlyCollected) {
         setJustSlammed(true);
       }
+      if (result.ok) void refreshPassport();
     });
-  }, [authLoading, isAuthenticated, hasError, liveStation, collectStamp]);
+  }, [authLoading, hasError, liveStation, collectStamp, refreshPassport]);
 
   // Measure live distance if geolocation is available
   useEffect(() => {
@@ -180,7 +183,7 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
             titleAs="h1"
             flipHint={locale === "vi" ? "Chạm để lật" : "Tap to flip"}
             sheetCloseLabel={locale === "vi" ? "Đóng" : "Close"}
-            stamped={isAuthenticated && (collected || justSlammed)}
+            stamped={collected || justSlammed}
             sealLabel={locale === "vi" ? "ĐÃ ĐÓNG DẤU" : "STAMPED"}
             sealDetail={`#${liveStation.stamp.sortOrder} · ${liveStation.tag.publicCode}`}
             sealAnimate={justSlammed}
@@ -217,9 +220,14 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
           <div className="space-y-2">
             <GoogleSignInButton
               nextPath={`/s/${liveStation.tag.publicCode}`}
-              labelEn="Continue with Google to collect"
-              labelVi="Đăng nhập Gmail để nhận tem"
+              labelEn={collected || justSlammed ? "Continue with Google to save your passport" : "Continue with Google to collect"}
+              labelVi={collected || justSlammed ? "Đăng nhập Gmail để lưu hộ chiếu" : "Đăng nhập Gmail để nhận tem"}
             />
+            {collected || justSlammed ? (
+              <Link href="/passport" data-testid="open-passport-cta" className="block text-center text-sm font-bold text-[#176B61] underline-offset-2 hover:underline">
+                {locale === "vi" ? "Xem hộ chiếu khách" : "View guest passport"}
+              </Link>
+            ) : null}
           </div>
         ) : (
           <Link

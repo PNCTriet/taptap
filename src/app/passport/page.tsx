@@ -18,18 +18,21 @@ export default function PassportPage() {
     stations,
     badges,
     rewards,
-    collectedStamps,
     redemptions,
     isStationCollected,
     getCollectedRecord,
+    passportStamps,
+    mergeNotice,
+    dismissMergeNotice,
   } = useExplorer();
+  const b2bStamps = passportStamps.filter((s) => s.source === "b2b");
 
   const collection = collections[0];
   const badge = badges[0];
   const reward = rewards[0];
 
   const totalStamps = stations.length;
-  const collectedCount = collectedStamps.length;
+  const collectedCount = stations.filter((s) => isStationCollected(s.id)).length;
   const progressPercent =
     totalStamps > 0 ? Math.round((collectedCount / totalStamps) * 100) : 0;
   const isCompleted = collectedCount >= (collection?.requiredStamps ?? 4);
@@ -39,6 +42,16 @@ export default function PassportPage() {
 
   return (
     <div className="space-y-6">
+      {mergeNotice ? (
+        <div role="status" data-testid="merge-notice" className="paper-card flex items-start justify-between gap-3 p-4 text-sm font-semibold text-[#176B61]">
+          <span>
+            {locale === "vi"
+              ? `Đã chuyển ${mergeNotice.merged} con dấu khách vào tài khoản${mergeNotice.alreadyOwned ? ` · ${mergeNotice.alreadyOwned} đã có sẵn` : ""}.`
+              : `Moved ${mergeNotice.merged} guest stamp${mergeNotice.merged === 1 ? "" : "s"} into your account${mergeNotice.alreadyOwned ? ` · ${mergeNotice.alreadyOwned} already owned` : ""}.`}
+          </span>
+          <button type="button" onClick={dismissMergeNotice} className="text-xs text-[#525D58]" aria-label={locale === "vi" ? "Đóng" : "Dismiss"}>✕</button>
+        </div>
+      ) : null}
       {/* Minimal Header */}
       <div className="paper-card p-5 space-y-4">
         <div className="flex items-center justify-between gap-2">
@@ -80,6 +93,29 @@ export default function PassportPage() {
           </div>
         )}
       </div>
+
+      {b2bStamps.length > 0 ? (
+        <section className="space-y-2" data-testid="passport-b2b">
+          <h2 className="font-display-serif text-lg font-extrabold text-[#272E2B]">
+            {locale === "vi" ? "Từ các địa điểm khác" : "From other places"}
+          </h2>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {b2bStamps.map((s) => (
+              <li key={s.id} data-testid="passport-b2b-stamp" className="paper-card flex items-center gap-3 p-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#E6F3F1] text-base font-extrabold text-[#176B61]">
+                  {s.name.slice(0, 1).toUpperCase()}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-extrabold text-[#272E2B]">{s.name}</span>
+                  <span className="block truncate text-xs font-semibold text-[#525D58]" data-testid="passport-b2b-origin">
+                    {[s.tenantName, s.roomName].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* 2-Column Visual Stamp Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

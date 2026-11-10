@@ -18,6 +18,8 @@ import {
   PILOT_VENUE,
 } from "@/features/pilot/sample-data";
 import { isSupabasePublicEnvConfigured } from "@/lib/env";
+import { mergeGuestProgress } from "@/lib/passport-client";
+import type { MergeResponse, PassportStamp } from "@/types/passport";
 import { createClientSupabaseClient } from "@/lib/supabase/client";
 import type { StampSource, SupportedLocale } from "@/types/database.types";
 import type {
@@ -181,6 +183,11 @@ interface ExplorerContextValue {
   isPlatformAdmin: boolean;
   catalogSource: "supabase" | "pilot-seed";
   refreshPassport: () => Promise<void>;
+  /** All passport stamps (B2C + B2B) for the account or the guest cookie. */
+  passportStamps: PassportStamp[];
+  /** Result of the last guest -> account merge at sign-in (null when nothing to report). */
+  mergeNotice: MergeResponse | null;
+  dismissMergeNotice: () => void;
   issueRedemption: (rewardId: string) => RedemptionRecord | undefined;
   claimReward: (rewardId: string) => RedemptionRecord | undefined;
   markRedemptionRedeemed: (redemptionId: string) => void;
@@ -206,6 +213,20 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [state, setState] = useState<StoredExplorerState>(createInitialState);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [passportStamps, setPassportStamps] = useState<PassportStamp[]>([]);
+  const [mergeNotice, setMergeNotice] = useState<MergeResponse | null>(null);
+  // Persist across the post-sign-in navigation (the merge may run on /login before redirect).
+  const MERGE_NOTICE_KEY = "taptap:merge-notice";
+  const dismissMergeNotice = useCallback(() => {
+    setMergeNotice(null);
+    try { window.sessionStorage.removeItem(MERGE_NOTICE_KEY); } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    try {
+      const raw = window.sessionStorage.getItem(MERGE_NOTICE_KEY);
+      if (raw) setMergeNotice(JSON.parse(raw) as MergeResponse);
+    } catch { /* ignore */ }
+  }, []);
   const [catalogSource, setCatalogSource] = useState<"supabase" | "pilot-seed">(
     "pilot-seed"
   );
@@ -217,6 +238,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/passport", { cache: "no-store" });
       if (!res.ok) return;
       const body = (await res.json()) as {
+        stamps?: PassportStamp[];
         records: Array<{
           id: string;
           participant_id: string;
@@ -227,6 +249,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
           source: StampSource;
         }>;
       };
+      setPassportStamps(Array.isArray(body.stamps) ? body.stamps : []);
       setState((prev) => ({
         ...prev,
         collectedStamps: body.records.map((r) => ({
@@ -243,6 +266,28 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       // Keep current state on network errors
     }
   }, [isSupabaseConfigured]);
+
+  // Guest passport (httpOnly cookie) while signed out; merge guest progress once per sign-in.
+  const mergedForUser = useRef<string | null>(null);
+  useEffect(() => {
+    if (!isSupabaseConfigured || authLoading) return;
+    if (!user) {
+      mergedForUser.current = null;
+      void refreshPassport();
+      return;
+    }
+    if (mergedForUser.current === user.id) return;
+    mergedForUser.current = user.id;
+    void mergeGuestProgress()
+      .then((r) => {
+        if (r.merged + r.alreadyOwned > 0) {
+          setMergeNotice(r);
+          try { window.sessionStorage.setItem("taptap:merge-notice", JSON.stringify(r)); } catch { /* ignore */ }
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => void refreshPassport());
+  }, [isSupabaseConfigured, authLoading, user, refreshPassport]);
 
   // Live B2C catalog from Supabase (tenant rows excluded server-side).
   useEffect(() => {
@@ -793,7 +838,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         state.stations.find((s) => s.id === stationId) ?? stationOverride;
 
       // Live mode: the server validates the tag and writes idempotently.
-      if (isSupabaseConfigured && user && station) {
+      if (isSupabaseConfigured && station) {
         try {
           const res = await fetch("/api/collect", {
             method: "POST",
@@ -838,9 +883,6 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
           };
           setState((prev) => ({
             ...prev,
-            stations: prev.stations.some((s) => s.id === station.id)
-              ? prev.stations
-              : [...prev.stations, station],
             collectedStamps: prev.collectedStamps.some(
               (c) => c.stampId === record.stampId
             )
@@ -1228,6 +1270,9 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       isPlatformAdmin,
       catalogSource,
       refreshPassport,
+      passportStamps,
+      mergeNotice,
+      dismissMergeNotice,
       issueRedemption,
       claimReward: issueRedemption,
       markRedemptionRedeemed,
@@ -1266,6 +1311,9 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       isPlatformAdmin,
       catalogSource,
       refreshPassport,
+      passportStamps,
+      mergeNotice,
+      dismissMergeNotice,
       issueRedemption,
       markRedemptionRedeemed,
       resetDemoProgress,
