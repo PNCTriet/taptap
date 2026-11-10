@@ -976,7 +976,6 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       state.session.participantId,
       state.stations,
       isSupabaseConfigured,
-      user,
     ]
   );
 
