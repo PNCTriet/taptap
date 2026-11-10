@@ -1,37 +1,23 @@
 import type { Metadata } from "next";
-import { Baloo_2, Be_Vietnam_Pro, JetBrains_Mono, Nunito_Sans } from "next/font/google";
+// Self-hosted fonts (no Google Fonts fetch at build time; it failed intermittently on Vercel).
+import "@fontsource/nunito-sans/400.css";
+import "@fontsource/nunito-sans/600.css";
+import "@fontsource/nunito-sans/700.css";
+import "@fontsource/nunito-sans/800.css";
+import "@fontsource/jetbrains-mono/500.css";
+import "@fontsource/jetbrains-mono/600.css";
+import "@fontsource/jetbrains-mono/700.css";
+import "@fontsource/baloo-2/600.css";
+import "@fontsource/baloo-2/700.css";
+import "@fontsource/baloo-2/800.css";
+import "@fontsource/be-vietnam-pro/400.css";
+import "@fontsource/be-vietnam-pro/500.css";
+import "@fontsource/be-vietnam-pro/600.css";
+import "@fontsource/be-vietnam-pro/700.css";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { ExplorerProvider } from "@/context/explorer-context";
 import { NavigationShell } from "@/components/navigation";
-
-const nunitoSans = Nunito_Sans({
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "600", "700", "800"],
-  variable: "--font-nunito-sans",
-  display: "swap",
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin", "vietnamese"],
-  weight: ["500", "600", "700"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-});
-
-const baloo = Baloo_2({
-  subsets: ["latin", "vietnamese"],
-  weight: ["600", "700", "800"],
-  variable: "--font-baloo",
-  display: "swap",
-});
-
-const beVietnam = Be_Vietnam_Pro({
-  subsets: ["latin", "vietnamese"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-be-vietnam",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "TAPTAP — Tap. Explore. Collect.",
@@ -45,10 +31,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${nunitoSans.variable} ${jetbrainsMono.variable} ${baloo.variable} ${beVietnam.variable}`}
-    >
+    <html lang="en">
       <body className="antialiased selection:bg-[#176B61] selection:text-white">
         <ExplorerProvider>
           <NavigationShell>{children}</NavigationShell>

@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/* Self-hosted font family names (see src/app/layout.tsx). */
+:root {
+  --font-nunito-sans: "Nunito Sans";
+  --font-jetbrains-mono: "JetBrains Mono";
+  --font-baloo: "Baloo 2";
+  --font-be-vietnam: "Be Vietnam Pro";
+}
+
 @theme {
   --font-gouache: var(--font-baloo), "Baloo 2", ui-rounded, sans-serif;
   --font-be: var(--font-be-vietnam), "Be Vietnam Pro", sans-serif;
