@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, JetBrains_Mono, Nunito_Sans } from "next/font/google";
+import { Baloo_2, Be_Vietnam_Pro, JetBrains_Mono, Nunito_Sans } from "next/font/google";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 import { ExplorerProvider } from "@/context/explorer-context";
@@ -12,17 +12,24 @@ const nunitoSans = Nunito_Sans({
   display: "swap",
 });
 
-const fraunces = Fraunces({
-  subsets: ["latin", "vietnamese"],
-  weight: ["600", "700", "800"],
-  variable: "--font-fraunces",
-  display: "swap",
-});
-
 const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin", "vietnamese"],
   weight: ["500", "600", "700"],
   variable: "--font-jetbrains-mono",
+  display: "swap",
+});
+
+const baloo = Baloo_2({
+  subsets: ["latin", "vietnamese"],
+  weight: ["600", "700", "800"],
+  variable: "--font-baloo",
+  display: "swap",
+});
+
+const beVietnam = Be_Vietnam_Pro({
+  subsets: ["latin", "vietnamese"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-be-vietnam",
   display: "swap",
 });
 
@@ -40,7 +47,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${nunitoSans.variable} ${fraunces.variable} ${jetbrainsMono.variable}`}
+      className={`${nunitoSans.variable} ${jetbrainsMono.variable} ${baloo.variable} ${beVietnam.variable}`}
     >
       <body className="antialiased selection:bg-[#176B61] selection:text-white">
         <ExplorerProvider>

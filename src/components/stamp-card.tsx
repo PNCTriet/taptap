@@ -50,6 +50,7 @@ export function StampCard({
   const content = (
     <div
       data-testid={`stamp-card-${station.id}`}
+      data-state={state}
       className={`animate-card-enter group relative rounded-[20px] p-2.5 transition-all duration-200 active:scale-[0.97] ${
         isCollected
           ? "bg-white border-2 border-[#176B61]/35 shadow-sm hover:-translate-y-0.5"

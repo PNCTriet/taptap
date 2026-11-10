@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
-  Check,
   Compass,
   MapPin,
   Navigation as NavigationIcon,
@@ -14,6 +13,9 @@ import { useExplorer } from "@/context/explorer-context";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { StationIllustration } from "@/components/station-artwork";
 import { AppIcon } from "@/components/ui/app-icon";
+import { Card3D } from "@/components/ui/card-3d";
+import { CardReveal } from "@/components/ui/card-reveal";
+import { TiltButton, TiltProvider } from "@/components/ui/tilt-provider";
 import {
   calculateDistanceMeters,
   formatDistance,
@@ -25,15 +27,12 @@ interface StationTapSheetProps {
   resolution: StationResolutionResult;
 }
 
-const CONFETTI_DOTS = [
-  { left: "14%", top: "24%", bg: "bg-[#F2C653]", delay: "0ms" },
-  { left: "28%", top: "16%", bg: "bg-[#F07861]", delay: "60ms" },
-  { left: "48%", top: "12%", bg: "bg-[#176B61]", delay: "110ms" },
-  { left: "68%", top: "18%", bg: "bg-[#F2C653]", delay: "40ms" },
-  { left: "82%", top: "26%", bg: "bg-[#F07861]", delay: "90ms" },
-  { left: "22%", top: "62%", bg: "bg-[#4D73CF]", delay: "70ms" },
-  { left: "78%", top: "58%", bg: "bg-[#F2C653]", delay: "120ms" },
-];
+const CARD_THEME = {
+  teal: { pastel: "#cde6d0", accent: "#176b61" },
+  coral: { pastel: "#ffd2b1", accent: "#d95b26" },
+  yellow: { pastel: "#f4e894", accent: "#d97724" },
+  blue: { pastel: "#d7e2fb", accent: "#4d73cf" },
+} as const;
 
 export function StationTapSheet({ resolution }: StationTapSheetProps) {
   const {
@@ -77,10 +76,11 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
     if (autoCollectTriggeredRef.current) return;
     autoCollectTriggeredRef.current = true;
 
-    const result = collectStamp(liveStation.id, "nfc");
-    if (result.newlyCollected) {
-      setJustSlammed(true);
-    }
+    void collectStamp(liveStation.id, "nfc", liveStation).then((result) => {
+      if (result.newlyCollected) {
+        setJustSlammed(true);
+      }
+    });
   }, [authLoading, isAuthenticated, hasError, liveStation, collectStamp]);
 
   // Measure live distance if geolocation is available
@@ -158,59 +158,43 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
   }
 
   return (
-    <div className="mx-auto max-w-md py-2">
-      <div
-        className={`paper-card p-5 sm:p-6 space-y-5 ${
-          justSlammed ? "animate-stamp-press" : "animate-card-enter"
-        }`}
-      >
-        {/* 4:3 Cohesive Animal Illustration with Tactile Postmark Slam & Confetti */}
-        <div className="relative overflow-hidden rounded-[18px] border border-[#E6DECB] bg-[#F5EFE2] aspect-[4/3]">
-          <StationIllustration
-            stationIdOrSlug={liveStation.id}
-            variant="card"
-            className="h-full w-full"
-          />
-
-          {isAuthenticated && (collected || justSlammed) && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/15">
-              {justSlammed && (
-                <>
-                  <div className="animate-ink-ring absolute h-28 w-28 rounded-full border-4 border-[#176B61]" />
-                  <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                    {CONFETTI_DOTS.map((dot, idx) => (
-                      <span
-                        key={idx}
-                        style={{
-                          left: dot.left,
-                          top: dot.top,
-                          animationDelay: dot.delay,
-                        }}
-                        className={`animate-confetti absolute h-3 w-3 rounded-full shadow-xs ${dot.bg}`}
-                      />
-                    ))}
-                  </div>
-                </>
-              )}
-              <div
-                data-testid="postmark-seal"
-                className={`${
-                  justSlammed ? "animate-postmark" : "-rotate-6"
-                } flex flex-col items-center justify-center rounded-full border-[3px] border-dashed border-[#FFFDF8] bg-[#176B61]/95 px-5 py-3 text-white shadow-xl`}
-              >
-                <div className="flex items-center gap-1 text-xs font-extrabold uppercase tracking-widest">
-                  <AppIcon icon={Check} size="sm" strokeWidth={2.8} />
-                  <span>{locale === "vi" ? "ĐÃ ĐÓNG DẤU" : "STAMPED"}</span>
-                </div>
-                <span className="type-mono text-[10px] opacity-85">
-                  #{liveStation.stamp.sortOrder} • {liveStation.tag.publicCode}
-                </span>
-              </div>
-            </div>
-          )}
+    <TiltProvider>
+      <div className="mx-auto max-w-md space-y-4 py-2">
+        <div className="flex justify-end">
+          <TiltButton />
         </div>
+        <CardReveal
+          play={justSlammed}
+          name={t(liveStation.name)}
+          series={locale === "vi" ? "Thảo Cầm Viên" : "Saigon Zoo"}
+          skipLabel={locale === "vi" ? "Bỏ qua" : "Skip"}
+          celebrate={justSlammed}
+        >
+          <Card3D
+            name={t(liveStation.name)}
+            series={locale === "vi" ? "Nhà thám hiểm" : "Zoo Explorer"}
+            code={liveStation.tag.publicCode}
+            fact={t(liveStation.funFact)}
+            pastel={CARD_THEME[liveStation.stamp.accentColor].pastel}
+            accent={CARD_THEME[liveStation.stamp.accentColor].accent}
+            titleAs="h1"
+            flipHint={locale === "vi" ? "Chạm để lật" : "Tap to flip"}
+            sheetCloseLabel={locale === "vi" ? "Đóng" : "Close"}
+            stamped={isAuthenticated && (collected || justSlammed)}
+            sealLabel={locale === "vi" ? "ĐÃ ĐÓNG DẤU" : "STAMPED"}
+            sealDetail={`#${liveStation.stamp.sortOrder} · ${liveStation.tag.publicCode}`}
+            sealAnimate={justSlammed}
+            className="mx-auto h-[232px] w-[164px]"
+            art={
+              <StationIllustration
+                stationIdOrSlug={liveStation.id}
+                variant="card"
+                className="h-full w-full"
+              />
+            }
+          />
+        </CardReveal>
 
-        {/* Station Title + Location & GPS Pill */}
         <div className="space-y-2 text-center">
           <div className="flex flex-wrap items-center justify-center gap-2 text-xs font-bold text-[#176B61]">
             <span className="inline-flex items-center gap-1 rounded-full bg-[#E6F3F1] px-2.5 py-0.5">
@@ -223,10 +207,6 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
               </span>
             )}
           </div>
-
-          <h1 className="font-display-serif text-2xl font-extrabold text-[#272E2B]">
-            {t(liveStation.name)}
-          </h1>
           <p className="text-sm text-[#525D58] line-clamp-2">
             {t(liveStation.description)}
           </p>
@@ -284,6 +264,6 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
           </a>
         </div>
       </div>
-    </div>
+    </TiltProvider>
   );
 }

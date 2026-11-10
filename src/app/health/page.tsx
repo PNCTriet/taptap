@@ -135,7 +135,7 @@ export default function HealthPage() {
             <AppIcon icon={Sparkles} size="xs" className="text-[#F2C653]" />
             TAPTAP • Saigon Zoo
           </span>
-          <Link href="/" className="font-extrabold text-[#176B61] hover:underline">
+          <Link href="/explore" className="font-extrabold text-[#176B61] hover:underline">
             Return to Explore →
           </Link>
         </div>

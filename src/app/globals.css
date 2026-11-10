@@ -1,12 +1,53 @@
 @import "tailwindcss";
 
+@theme {
+  --font-gouache: var(--font-baloo), "Baloo 2", ui-rounded, sans-serif;
+  --font-be: var(--font-be-vietnam), "Be Vietnam Pro", sans-serif;
+
+  --color-gouache-bg: #fdf8ee;
+  --color-gouache-bg-deep: #f3e9d2;
+  --color-gouache-ink: #2c221e;
+  --color-gouache-muted: #6e5d53;
+  --color-gouache-cream: #fffdf8;
+  --color-gouache-back: #faf1de;
+  --color-gouache-line: #efe6d5;
+  --color-gouache-edge: #e6dac6;
+  --color-player-accent: #d97724;
+  --color-player-pastel: #f4e894;
+  --color-business-ink: #15202b;
+  --color-business-accent: #1f4b66;
+  --color-business-paper: #eef2f4;
+  --color-business-mist: #f7f9fa;
+  --color-business-line: #d5dee3;
+  --color-admin-ink: #1c1915;
+  --color-admin-paper: #f3efe6;
+  --color-admin-bar: #241c16;
+
+  --radius-card-3d: 26px;
+  --radius-sheet: 28px;
+  --radius-control: 14px;
+
+  --shadow-card-rest: 0 18px 38px -16px rgba(44, 34, 30, 0.38);
+  --shadow-sheet: 0 -12px 40px rgba(28, 22, 18, 0.18);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-swift: cubic-bezier(0.55, 0, 1, 0.45);
+
+  --duration-instant: 120ms;
+  --duration-fast: 180ms;
+  --duration-base: 320ms;
+  --duration-slow: 680ms;
+  --duration-reveal: 880ms;
+}
+
 :root {
   /* ==========================================================================
    * TAPTAP — Playful Explorer Design Tokens & Unified Typography
    * ========================================================================== */
   --font-sans: var(--font-nunito-sans), -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, sans-serif;
-  --font-display: var(--font-fraunces), Georgia, Cambria, "Times New Roman", Times,
+  --font-display: var(--font-baloo), Georgia, Cambria, "Times New Roman", Times,
     serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo,
     Monaco, Consolas, monospace;
@@ -58,6 +99,24 @@
     0 6px 20px -4px rgba(39, 46, 43, 0.05);
   --shadow-stamp: 0 4px 14px -2px rgba(23, 107, 97, 0.14),
     0 2px 6px -1px rgba(39, 46, 43, 0.08);
+
+  /* Motion prototype scale — durations, springs, and HIG type sizes */
+  --motion-duration-instant: 120ms;
+  --motion-duration-fast: 180ms;
+  --motion-duration-base: 320ms;
+  --motion-duration-slow: 680ms;
+  --motion-duration-reveal: 880ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --motion-ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --type-large-title: 2.125rem;
+  --type-title-2: 1.75rem;
+  --type-title-3: 1.375rem;
+  --type-body: 1.0625rem;
+  --type-footnote: 0.8125rem;
+  --type-caption: 0.75rem;
+  --radius-card-3d: 26px;
+  --radius-sheet: 28px;
 }
 
 html,
@@ -284,8 +343,517 @@ body {
   .animate-postmark,
   .animate-ink-ring,
   .animate-gps-radar,
-  .animate-confetti {
+  .animate-confetti,
+  .ui-reveal-card,
+  .ui-ring,
+  .ui-reveal-core,
+  .ui-mote,
+  .ui-sheet-panel,
+  .ui-card-flipper {
     animation: none !important;
     transition: none !important;
+  }
+
+  .ui-reveal-overlay,
+  .ui-reveal-rings,
+  .ui-reveal-confetti {
+    display: none !important;
+  }
+
+  .ui-reveal-card {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Phase 1 motion layer — gouache card, reveal, sheet                         */
+/* -------------------------------------------------------------------------- */
+
+.ui-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image: radial-gradient(rgba(44, 34, 30, 0.06) 1px, transparent 0);
+  background-size: 18px 18px;
+}
+
+.ui-card-slot {
+  position: absolute;
+  inset: 0;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  border-radius: var(--radius-card-3d);
+  --rot-x: 0deg;
+  --rot-y: 0deg;
+  --card-scale: 1;
+  --art-x: 0px;
+  --art-y: 0px;
+  --glare-x: 50%;
+  --glare-y: 48%;
+  --spec-x: 50%;
+  --spec-y: 50%;
+  --spec-angle: 126deg;
+  --holo-x: 50%;
+  --holo-y: 50%;
+  --holo-angle: 118deg;
+  --spec-opacity: 0;
+  --holo-opacity: 0;
+  --glare-opacity: 0;
+  --shadow-x: 0px;
+  --shadow-y: 18px;
+}
+
+.ui-card-slot:active {
+  cursor: grabbing;
+}
+
+.ui-card-slot:focus-visible {
+  outline: 2px solid var(--color-gouache-ink);
+  outline-offset: 4px;
+}
+
+.ui-card-shadow {
+  position: absolute;
+  inset: 8% 10% -4%;
+  border-radius: 30px;
+  background: rgba(36, 25, 18, 0.28);
+  filter: blur(18px);
+  transform: translate(var(--shadow-x), var(--shadow-y)) scale(0.96);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.ui-card-stage {
+  position: absolute;
+  inset: 0;
+  perspective: 1100px;
+  z-index: 1;
+}
+
+.ui-card-tilt {
+  width: 100%;
+  height: 100%;
+  transform: rotateX(var(--rot-x)) rotateY(var(--rot-y)) scale(var(--card-scale));
+  transform-style: preserve-3d;
+}
+
+.ui-card-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateY(var(--flip-y, 0deg));
+  transition: transform var(--motion-duration-slow) var(--motion-ease-spring);
+}
+
+.ui-card-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--radius-card-3d);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255, 255, 255, 0.92),
+    inset 0 0 0 3px rgba(44, 34, 30, 0.06);
+}
+
+.ui-card-face-back {
+  transform: rotateY(180deg);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 14px 14px;
+  text-align: center;
+  background: linear-gradient(165deg, #fffaf0 0%, var(--color-gouache-back) 100%);
+}
+
+.ui-card-art-window {
+  position: absolute;
+  inset: 8px 8px 84px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--card-pastel, var(--color-player-pastel));
+  box-shadow:
+    inset 0 2px 5px rgba(44, 34, 30, 0.1),
+    inset 0 0 0 1px rgba(44, 34, 30, 0.06);
+}
+
+.ui-card-art-media {
+  height: 100%;
+  width: 100%;
+  transform: translate3d(var(--art-x), var(--art-y), 0) scale(1.05);
+}
+
+.ui-card-art-fill,
+.ui-card-art-fill > * {
+  height: 100%;
+  width: 100%;
+  aspect-ratio: auto;
+}
+
+.ui-card-nameplate {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  height: 80px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  padding: 4px 10px 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), #fff 32%);
+}
+
+.ui-card-series {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--card-pastel, var(--color-player-pastel));
+  padding: 2px 8px;
+  font-size: var(--type-caption);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-gouache-ink);
+}
+
+.ui-card-name {
+  max-width: 100%;
+  overflow: hidden;
+  font-family: var(--font-gouache), "Baloo 2", sans-serif;
+  font-size: clamp(1.15rem, 4.6vw, 1.45rem);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-gouache-ink);
+}
+
+.ui-card-hint {
+  font-family: var(--font-be), "Be Vietnam Pro", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--color-gouache-muted);
+}
+
+.ui-card-holo,
+.ui-card-texture {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.ui-card-specular {
+  z-index: 4;
+  opacity: var(--spec-opacity);
+  background-image: linear-gradient(
+    var(--spec-angle),
+    rgba(255, 255, 255, 0) 42%,
+    rgba(255, 255, 255, 0.92) 50%,
+    rgba(255, 255, 255, 0) 58%
+  );
+  background-size: 280% 280%;
+  background-position: var(--spec-x) var(--spec-y);
+  mix-blend-mode: screen;
+}
+
+.ui-card-rainbow {
+  z-index: 5;
+  opacity: var(--holo-opacity);
+  background-image: linear-gradient(
+    var(--holo-angle),
+    rgba(255, 150, 195, 0) 20%,
+    rgba(255, 214, 138, 0.7) 35%,
+    rgba(152, 244, 200, 0.8) 48%,
+    rgba(138, 212, 255, 0.85) 58%,
+    rgba(196, 162, 255, 0.7) 70%,
+    rgba(255, 220, 150, 0) 82%
+  );
+  background-size: 280% 280%;
+  background-position: var(--holo-x) var(--holo-y);
+  mix-blend-mode: color-dodge;
+}
+
+.ui-card-glare {
+  z-index: 6;
+  opacity: var(--glare-opacity);
+  background-image: radial-gradient(
+    farthest-corner circle at var(--glare-x) var(--glare-y),
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 255, 255, 0.18) 36%,
+    rgba(255, 255, 255, 0) 72%
+  );
+  mix-blend-mode: soft-light;
+}
+
+.ui-card-texture {
+  z-index: 3;
+  opacity: 0.16;
+  background-image:
+    radial-gradient(rgba(92, 70, 50, 0.16) 0.7px, transparent 0),
+    radial-gradient(rgba(92, 70, 50, 0.1) 0.7px, transparent 0);
+  background-size: 12px 12px;
+  background-position: 0 0, 6px 6px;
+}
+
+.ui-card-seal {
+  position: absolute;
+  right: 14px;
+  bottom: 92px;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px dashed #fffdf8;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card-accent, #176b61) 92%, black);
+  padding: 6px 10px;
+  color: white;
+  transform: rotate(-8deg);
+}
+
+.ui-reveal {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.ui-reveal-card,
+.ui-reveal-overlay,
+.ui-reveal-rings {
+  grid-area: 1 / 1;
+}
+
+.ui-reveal[data-state="ripple"] .ui-reveal-card,
+.ui-reveal[data-state="intro"] .ui-reveal-card {
+  opacity: 0;
+}
+
+.ui-reveal[data-state="fly"] .ui-reveal-card {
+  animation: ui-card-fly var(--motion-duration-reveal) var(--motion-ease-spring) both;
+}
+
+.ui-reveal-rings {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.ui-reveal[data-state="ripple"] .ui-ring {
+  animation: ui-ring 520ms var(--motion-ease-out) both;
+}
+
+.ui-reveal[data-state="ripple"] .ui-ring:nth-child(2) {
+  animation-delay: 70ms;
+}
+
+.ui-reveal[data-state="ripple"] .ui-ring:nth-child(3) {
+  animation-delay: 130ms;
+}
+
+.ui-ring,
+.ui-reveal-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border-radius: 999px;
+}
+
+.ui-ring {
+  width: 72px;
+  height: 72px;
+  border: 2.5px solid var(--card-accent, var(--color-player-accent));
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.4);
+}
+
+.ui-reveal-core {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  border: 2px solid var(--card-accent, var(--color-player-accent));
+  background: var(--color-gouache-cream);
+  color: var(--color-gouache-ink);
+  font-family: var(--font-gouache), "Baloo 2", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.5);
+}
+
+.ui-reveal[data-state="ripple"] .ui-reveal-core {
+  animation: ui-core 420ms var(--motion-ease-spring) both;
+}
+
+.ui-reveal-overlay {
+  z-index: 3;
+  display: none;
+  width: min(100%, 280px);
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 28px;
+  border: 2px dashed rgba(255, 253, 248, 0.28);
+  background:
+    radial-gradient(circle at 50% 36%, var(--card-glow, rgba(244, 232, 148, 0.45)), transparent 68%),
+    linear-gradient(168deg, #261d19, #1b1411);
+  padding: 18px 16px 14px;
+  text-align: center;
+  color: #fffdf8;
+}
+
+.ui-reveal[data-state="intro"] .ui-reveal-overlay {
+  display: flex;
+}
+
+.ui-reveal-progress {
+  height: 4px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 253, 248, 0.16);
+}
+
+.ui-reveal-progress > span {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: var(--card-pastel, var(--color-player-pastel));
+  animation: ui-progress linear forwards;
+}
+
+.ui-reveal-confetti {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.ui-reveal[data-state="fly"] .ui-mote {
+  animation: ui-mote 800ms var(--motion-ease-out) both;
+}
+
+.ui-mote {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  opacity: 0;
+}
+
+.ui-sheet-root {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.ui-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(28, 22, 18, 0.42);
+}
+
+.ui-sheet-panel {
+  position: relative;
+  width: min(100%, 480px);
+  margin: 0 8px calc(8px + env(safe-area-inset-bottom));
+  border-radius: var(--radius-sheet);
+  background: var(--color-gouache-cream);
+  padding: 16px 18px 20px;
+  box-shadow: var(--shadow-sheet);
+  animation: ui-sheet-up var(--motion-duration-base) var(--motion-ease-out);
+}
+
+@keyframes ui-card-fly {
+  0% {
+    opacity: 0;
+    transform: translateY(120px) rotate(-6deg) scale(0.42);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes ui-ring {
+  0% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) scale(0.35);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(2.4);
+  }
+}
+
+@keyframes ui-core {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.4);
+  }
+  55% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.7);
+  }
+}
+
+@keyframes ui-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes ui-mote {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.4);
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) scale(1);
+  }
+}
+
+@keyframes ui-sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
