@@ -23,7 +23,7 @@ const B2B_LINKS = [
   { href: "/admin/b2b/tenants", en: "Tenants", vi: "Tenant" },
 ];
 
-/** HOWL platform admin chrome: B2C CMS + B2B platform sections. */
+/** Platform admin chrome: B2C CMS + B2B platform sections. */
 export function AdminShell({
   title,
   subtitle,

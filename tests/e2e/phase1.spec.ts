@@ -197,10 +197,13 @@ test.describe("B2B: platform admin, tenant quota, roles, isolation", () => {
   });
 
   test("tenant dashboard shows used/max for rooms, stations, members, tags", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
     await login(page, "OWNER", "/b2b?tenant=demo-toy-studio");
     for (const r of ["rooms", "stations", "members", "active_nfc_tags"]) {
       await expect(page.getByTestId(`quota-${r}-value`)).toHaveText(/\d+\s*\/\s*\d+/);
     }
+    const dir = process.env.PHASE1_SCREENSHOT_DIR;
+    if (dir) await page.screenshot({ path: `${dir}/b2b-dashboard-390x844.png`, fullPage: false });
   });
 
   test("editor cannot invite or create rooms; viewer is read-only", async ({ page }) => {

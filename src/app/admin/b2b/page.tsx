@@ -29,8 +29,8 @@ export default function B2bOverviewPage() {
   return (
     <AdminShell title={tx("Business usage", "Sử dụng B2B")}>
       <div className="flex gap-2">
-        <Link href="/admin/b2b/packages" className="rounded-xl bg-white px-4 py-2.5 text-[15px] font-semibold text-[#0A66FF] ring-1 ring-black/[0.08]">{tx("Packages", "Gói")}</Link>
-        <Link href="/admin/b2b/tenants" className="rounded-xl bg-white px-4 py-2.5 text-[15px] font-semibold text-[#0A66FF] ring-1 ring-black/[0.08]">{tx("Tenants", "Tenant")}</Link>
+        <Link href="/admin/b2b/packages" className="rounded-xl bg-white px-4 py-2.5 text-[15px] font-semibold text-[#1F4B66] ring-1 ring-black/[0.08]">{tx("Packages", "Gói")}</Link>
+        <Link href="/admin/b2b/tenants" className="rounded-xl bg-white px-4 py-2.5 text-[15px] font-semibold text-[#1F4B66] ring-1 ring-black/[0.08]">{tx("Tenants", "Tenant")}</Link>
       </div>
       {rows === null ? <Empty>…</Empty> : rows.length === 0 ? <Empty>{tx("No tenants yet", "Chưa có tenant")}</Empty> : rows.map((t) => (
         <Link key={t.id} href={`/admin/b2b/tenants/${t.id}`} className="block">

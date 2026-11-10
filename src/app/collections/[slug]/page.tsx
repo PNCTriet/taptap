@@ -57,7 +57,7 @@ export default function CollectionDetailPage() {
   return (
     <div className="space-y-6">
       <Link
-        href="/"
+        href="/explore"
         className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#176B61] hover:underline"
       >
         <AppIcon icon={ArrowLeft} size="sm" />

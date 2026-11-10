@@ -1,5 +1,5 @@
 /** Player (B2C) entry routes used by CMS "open experience" CTAs. */
-export const PLAYER_HOME = "/";
+export const PLAYER_HOME = "/explore";
 export const playerStationUrl = (code: string) => `/s/${encodeURIComponent(code)}`;
 export const playerCollectionUrl = (slug: string) => `/collections/${encodeURIComponent(slug)}`;
 

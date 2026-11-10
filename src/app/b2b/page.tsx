@@ -10,6 +10,9 @@ export default function TenantHomePage() {
   const { usage, tenant, href, canManageRooms, canEditStations } = useTenant();
   return (
     <div className="space-y-4">
+      <h1 className="font-gouache text-[length:var(--type-title-2)] leading-[1.15] text-business-ink">
+        {tenant?.name ?? tx("Business workspace", "Không gian doanh nghiệp")}
+      </h1>
       <Card className="space-y-4">
         <SectionTitle>
           {tx("Usage", "Mức sử dụng")} <span className="text-[13px] font-normal text-[#8E8E93]">· {usage?.packageName ?? "—"}{tenant?.is_demo ? " · DEMO" : ""}</span>
@@ -18,10 +21,10 @@ export default function TenantHomePage() {
       </Card>
       <div className="grid grid-cols-2 gap-3">
         {canManageRooms ? (
-          <Link href={href("/b2b/rooms")}><Card className="text-[15px] font-semibold text-[#0A66FF]">+ {tx("Room", "Phòng")}</Card></Link>
+          <Link href={href("/b2b/rooms")}><Card className="text-[15px] font-semibold text-[#1F4B66]">+ {tx("Room", "Phòng")}</Card></Link>
         ) : null}
         {canEditStations ? (
-          <Link href={href("/b2b/stations")}><Card className="text-[15px] font-semibold text-[#0A66FF]">+ {tx("Station", "Trạm")}</Card></Link>
+          <Link href={href("/b2b/stations")}><Card className="text-[15px] font-semibold text-[#1F4B66]">+ {tx("Station", "Trạm")}</Card></Link>
         ) : null}
       </div>
     </div>

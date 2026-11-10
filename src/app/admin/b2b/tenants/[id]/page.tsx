@@ -64,7 +64,7 @@ export default function TenantDetailPage({ params }: { params: Promise<{ id: str
           ) : (
             <Button tone="secondary" onClick={() => run("set-tenant-status", { tenantId: id, status: "active" }, tx("Activated", "Đã kích hoạt"))}>{tx("Activate", "Kích hoạt")}</Button>
           )}
-          <Link href={`/b2b?tenant=${tenant.slug}`} className="inline-flex min-h-[44px] items-center rounded-xl px-4 text-[15px] font-semibold text-[#0A66FF]">
+          <Link href={`/b2b?tenant=${tenant.slug}`} className="inline-flex min-h-[44px] items-center rounded-xl px-4 text-[15px] font-semibold text-[#1F4B66]">
             {tx("Open tenant site", "Mở trang tenant")} →
           </Link>
         </div>

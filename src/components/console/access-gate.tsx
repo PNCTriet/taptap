@@ -10,7 +10,7 @@ export function AccessDenied({ signedIn, next }: { signedIn: boolean; next: stri
       </h1>
       <Link
         href={`/login?next=${encodeURIComponent(next)}`}
-        className="inline-flex min-h-[44px] items-center rounded-xl bg-[#0A66FF] px-4 text-[15px] font-semibold text-white"
+        className="inline-flex min-h-[44px] items-center rounded-xl bg-[#1F4B66] px-4 text-[15px] font-semibold text-white"
       >
         {signedIn ? "Switch account" : "Sign in"}
       </Link>

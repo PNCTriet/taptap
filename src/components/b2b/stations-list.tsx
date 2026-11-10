@@ -91,7 +91,7 @@ export function StationsList({ roomId }: { roomId?: string }) {
             <div className="flex flex-wrap items-center gap-2">
               {s.nfc_tags.map((t) => (
                 <span key={t.id} className="inline-flex items-center gap-1.5 rounded-lg bg-[#F2F2F7] px-2 py-1 text-[12px]" data-testid="tag-chip">
-                  <Link href={playerStationUrl(t.public_code)} target="_blank" className="font-mono text-[#0A66FF]">{t.public_code}</Link>
+                  <Link href={playerStationUrl(t.public_code)} target="_blank" className="font-mono text-[#1F4B66]">{t.public_code}</Link>
                   <StatusPill status={t.status} />
                   {canEditStations ? (
                     <button type="button" className="text-[#6E6E73] underline" onClick={() => void run("set-tag-status", { tagId: t.id, status: t.status === "active" ? "disabled" : "active" }, tx("Tag updated", "Đã cập nhật thẻ"))}>

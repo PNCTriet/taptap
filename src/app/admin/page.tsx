@@ -40,7 +40,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {RESOURCES.map((r) => (
           <Link key={r.table} href={r.href}>
-            <Card className="space-y-1 transition hover:ring-2 hover:ring-[#0A66FF]/20">
+            <Card className="space-y-1 transition hover:ring-2 hover:ring-[#1F4B66]/20">
               <div className="text-[28px] font-bold tabular-nums text-[#1D1D1F]" data-testid={`count-${r.table}`}>
                 {counts[r.table] ?? "–"}
               </div>

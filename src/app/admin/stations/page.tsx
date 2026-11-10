@@ -27,7 +27,7 @@ const config: ResourceConfig = {
   secondary: (r) => `${r.venue?.name ?? ""} · ${(r.nfc_tags ?? []).filter((t: { status: string }) => t.status === "active").length} active tags`,
   status: (r) => r.status,
   rowActions: (r) => (
-    <Link href={`/admin/tags?station=${r.id}`} className="text-[13px] font-semibold text-[#0A66FF]">
+    <Link href={`/admin/tags?station=${r.id}`} className="text-[13px] font-semibold text-[#1F4B66]">
       Tags
     </Link>
   ),

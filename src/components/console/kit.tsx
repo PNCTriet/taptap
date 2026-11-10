@@ -33,10 +33,10 @@ export function Button({
   ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: ButtonTone }) {
   const tones: Record<ButtonTone, string> = {
-    primary: "bg-[#0A66FF] text-white hover:bg-[#0057E0]",
+    primary: "bg-[#1F4B66] text-white hover:bg-[#0057E0]",
     secondary: "bg-[#F2F2F7] text-[#1D1D1F] hover:bg-[#E5E5EA]",
     danger: "bg-[#FFF1F0] text-[#D70015] hover:bg-[#FFE3E1]",
-    plain: "bg-transparent text-[#0A66FF] hover:bg-[#F2F7FF]",
+    plain: "bg-transparent text-[#1F4B66] hover:bg-[#F2F7FF]",
   };
   return (
     <button
@@ -58,7 +58,7 @@ export function Field({ label, children, hint }: { label: string; children: Reac
 }
 
 export const inputClass =
-  "w-full min-h-[44px] rounded-xl border border-black/10 bg-[#FBFBFD] px-3 text-[15px] text-[#1D1D1F] outline-none focus:border-[#0A66FF] focus:ring-2 focus:ring-[#0A66FF]/20";
+  "w-full min-h-[44px] rounded-xl border border-black/10 bg-[#FBFBFD] px-3 text-[15px] text-[#1D1D1F] outline-none focus:border-[#1F4B66] focus:ring-2 focus:ring-[#1F4B66]/20";
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputClass} ${props.className ?? ""}`} />;
