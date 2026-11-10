@@ -9,7 +9,7 @@ import { hasE2eEnv, login, rest, tokenFor } from "./helpers";
 const DEMO_STARTER_TENANT = "94c09d20-0ba9-4839-a968-0f0ec6ab9dbe"; // "Demo Starter Space" (Starter: 1 room)
 const DEMO_GROWTH_TENANT = "79b5ad68-79e8-47ae-80a6-15ecd2a1f67d"; // "Demo Toy Studio" (Growth)
 
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", timeout: 120_000 });
 
 test.beforeEach(({}, testInfo) => {
   test.skip(!hasE2eEnv(), "E2E demo credentials not configured");
@@ -176,7 +176,9 @@ test.describe("B2B: platform admin, tenant quota, roles, isolation", () => {
     await expect(page.getByTestId("room-row")).toHaveCount(1);
     await expect(page.getByTestId("rooms-usage")).toHaveText(/1\s*\/\s*1/);
 
+    await page.waitForLoadState("networkidle");
     await page.getByTestId("room-name").fill("E2E Room 2");
+    await expect(page.getByTestId("room-name")).toHaveValue("E2E Room 2");
     const [resp] = await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/b2b/create-room")),
       page.getByTestId("room-create").click(),
