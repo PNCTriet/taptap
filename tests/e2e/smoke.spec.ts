@@ -6,6 +6,10 @@ test.describe("TAPTAP Minimalist Explorer Smoke Suite", () => {
   }) => {
     // 1. Discover Page
     await page.goto("/");
+    await expect(page.getByTestId("landing-player-cta")).toBeVisible();
+    await expect(page.getByTestId("landing-business-cta")).toBeVisible();
+
+    await page.goto("/explore");
     await expect(page.getByText("TAPTAP").first()).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Zoo Explorer" })

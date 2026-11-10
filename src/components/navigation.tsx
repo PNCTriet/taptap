@@ -6,20 +6,25 @@ import { usePathname } from "next/navigation";
 import { BookOpen, Compass, Map, ShieldCheck, User } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import { AppIcon } from "@/components/ui/app-icon";
+import { LocaleSwitch } from "@/components/ui/locale-switch";
 
 export function NavigationShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { locale, setLocale, collectedStamps, stations } = useExplorer();
+  const { locale, collectedStamps, stations } = useExplorer();
 
-  const isAdminRoute = pathname?.startsWith("/admin");
+  const isAdminRoute = pathname?.startsWith("/admin") ?? false;
+  const isBare =
+    pathname === "/" ||
+    isAdminRoute ||
+    (pathname?.startsWith("/b2b") ?? false);
 
   const navItems = [
     {
-      href: "/",
+      href: "/explore",
       label: locale === "vi" ? "Khám phá" : "Explore",
       icon: Compass,
       isActive:
-        pathname === "/" ||
+        pathname === "/explore" ||
         pathname?.startsWith("/collections") ||
         pathname?.startsWith("/s/"),
     },
@@ -47,8 +52,12 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
 
   const activeIndex = Math.max(
     0,
-    navItems.findIndex((item) => item.isActive && !isAdminRoute)
+    navItems.findIndex((item) => item.isActive)
   );
+
+  if (isBare) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FFF8EB] text-[#272E2B]">
@@ -56,7 +65,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-[#E6DECB]/80 bg-[#FFF8EB]/90 backdrop-blur-md">
         <div className="mx-auto max-w-4xl px-4 h-16 flex items-center justify-between gap-3">
           <Link
-            href="/"
+            href="/explore"
             className="flex items-center gap-2.5 group transition-transform duration-150 active:scale-[0.97]"
           >
             <div className="h-9 w-9 rounded-xl bg-[#176B61] text-white flex items-center justify-center shadow-xs group-hover:bg-[#12564E] transition-colors">
@@ -78,7 +87,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                   key={item.href}
                   href={item.href}
                   className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-all duration-150 active:scale-[0.97] ${
-                    item.isActive && !isAdminRoute
+                    item.isActive
                       ? "bg-[#176B61] text-white"
                       : "text-[#525D58] hover:text-[#272E2B] hover:bg-[#F5EFE2]"
                   }`}
@@ -88,7 +97,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                   {item.badge && (
                     <span
                       className={`type-mono rounded-full px-1.5 py-0.5 text-[10px] font-extrabold ${
-                        item.isActive && !isAdminRoute
+                        item.isActive
                           ? "bg-white/20 text-white"
                           : "bg-[#E6F3F1] text-[#176B61]"
                       }`}
@@ -112,37 +121,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
             </Link>
           </nav>
 
-          {/* EN / VI Pill Switcher */}
-          <div
-            role="group"
-            aria-label="Language switcher"
-            className="inline-flex items-center rounded-full border border-[#E6DECB] bg-white p-0.5"
-          >
-            <button
-              type="button"
-              onClick={() => setLocale("en")}
-              aria-pressed={locale === "en"}
-              className={`min-h-[30px] min-w-[34px] rounded-full px-2.5 text-xs font-extrabold transition-all duration-150 active:scale-[0.95] cursor-pointer ${
-                locale === "en"
-                  ? "bg-[#176B61] text-white"
-                  : "text-[#525D58] hover:text-[#272E2B]"
-              }`}
-            >
-              EN
-            </button>
-            <button
-              type="button"
-              onClick={() => setLocale("vi")}
-              aria-pressed={locale === "vi"}
-              className={`min-h-[30px] min-w-[34px] rounded-full px-2.5 text-xs font-extrabold transition-all duration-150 active:scale-[0.95] cursor-pointer ${
-                locale === "vi"
-                  ? "bg-[#176B61] text-white"
-                  : "text-[#525D58] hover:text-[#272E2B]"
-              }`}
-            >
-              VI
-            </button>
-          </div>
+          <LocaleSwitch tone="paper" />
         </div>
       </header>
 
@@ -155,9 +134,14 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-[#E6DECB]/60 py-6 pb-24 md:pb-6 text-xs text-[#78847E]">
         <div className="mx-auto max-w-4xl px-4 flex items-center justify-between">
           <span>TAPTAP • Tap. Explore. Collect.</span>
-          <Link href="/admin" className="hover:text-[#272E2B] font-semibold">
-            Admin
-          </Link>
+          <span className="flex items-center gap-3">
+            <Link href="/b2b" className="font-semibold hover:text-[#272E2B]">
+              {locale === "vi" ? "Doanh nghiệp" : "Business"}
+            </Link>
+            <Link href="/admin" className="font-semibold hover:text-[#272E2B]">
+              Admin
+            </Link>
+          </span>
         </div>
       </footer>
 
@@ -167,17 +151,15 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
         className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-[#E6DECB] bg-white/95 backdrop-blur-md px-2 py-1.5"
       >
         <div className="relative mx-auto max-w-md grid grid-cols-4 gap-1.5">
-          {!isAdminRoute && (
-            <div
-              aria-hidden="true"
-              style={{
-                transform: `translateX(${activeIndex * 100}%)`,
-              }}
-              className="pointer-events-none absolute -top-1.5 left-0 w-1/4 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
-            >
-              <span className="h-1 w-9 rounded-b-full bg-[#176B61]" />
-            </div>
-          )}
+          <div
+            aria-hidden="true"
+            style={{
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+            className="pointer-events-none absolute -top-1.5 left-0 w-1/4 flex justify-center transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          >
+            <span className="h-1 w-9 rounded-b-full bg-[#176B61]" />
+          </div>
 
           {navItems.map((item) => {
             return (
@@ -185,7 +167,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`min-h-[48px] flex flex-col items-center justify-center rounded-2xl px-2 py-1 text-xs font-extrabold transition-all duration-150 active:scale-[0.95] ${
-                  item.isActive && !isAdminRoute
+                  item.isActive
                     ? "bg-[#176B61] text-white"
                     : "text-[#525D58] hover:bg-[#F5EFE2]"
                 }`}
@@ -195,7 +177,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
                   {item.badge && (
                     <span
                       className={`type-mono ml-1 rounded-full px-1.5 text-[10px] font-extrabold ${
-                        item.isActive && !isAdminRoute
+                        item.isActive
                           ? "bg-[#F2C653] text-[#272E2B]"
                           : "bg-[#E6F3F1] text-[#176B61]"
                       }`}
