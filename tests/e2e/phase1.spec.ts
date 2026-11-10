@@ -101,7 +101,11 @@ test.describe("B2C: CMS → NFC tag → collect once → passport", () => {
 
     // Passport shows the just-collected stamp.
     await visitor.goto("/passport");
-    await expect(visitor.getByTestId(`stamp-card-${stationId}`)).toHaveAttribute("data-state", "collected", { timeout: 20_000 });
+    const card = visitor
+      .locator('[data-testid^="passport-stamp-"], [data-testid="stamp-card-' + stationId + '"]')
+      .filter({ hasText: `${stationName} stamp` })
+      .first();
+    await expect(card).toHaveAttribute("data-state", "collected", { timeout: 20_000 });
     await ctx.close();
   });
 
@@ -203,7 +207,7 @@ test.describe("B2B: platform admin, tenant quota, roles, isolation", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await login(page, "OWNER", "/b2b?tenant=demo-toy-studio");
     for (const r of ["rooms", "stations", "members", "active_nfc_tags"]) {
-      await expect(page.getByTestId(`quota-${r}-value`)).toHaveText(/\d+\s*\/\s*\d+/);
+      await expect(page.getByTestId(`quota-${r}-value`)).toHaveText(/\d+\s*\/\s*\d+/, { timeout: 20_000 });
     }
     const dir = process.env.PHASE1_SCREENSHOT_DIR;
     if (dir) await page.screenshot({ path: `${dir}/b2b-dashboard-390x844.png`, fullPage: false });

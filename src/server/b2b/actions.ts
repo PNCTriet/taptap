@@ -121,4 +121,19 @@ export const B2B_ACTIONS: Record<string, B2bAction> = {
     z.object({ tagId: uuid, status: z.enum(["active", "disabled", "lost", "replaced"]) }),
     (i) => ({ p_tag: i.tagId, p_status: i.status })
   ),
+  "upsert-stamp": action(
+    "tenant_upsert_stamp",
+    z.object({
+      stationId: uuid,
+      name,
+      description: text,
+      status: z.enum(["active", "inactive"]),
+    }),
+    (i) => ({
+      p_station: i.stationId,
+      p_name: i.name,
+      p_description: i.description ?? null,
+      p_status: i.status,
+    })
+  ),
 };

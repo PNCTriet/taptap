@@ -19,7 +19,7 @@
 | Chi phí | Chỉ free tier (Supabase Free, Vercel Hobby, Google Auth free). Mọi chi phí trả phí cần HOWL duyệt trước. |
 | UI | Apple HIG: rõ hierarchy, touch target lớn, spacing thoáng, motion nhẹ, mobile-first. |
 | Ngôn ngữ | Bilingual EN / VI, **English là mặc định**, VI là locale thứ hai. |
-| Branding | Không đề cập HOWLSTUDIO trên sản phẩm / docs public của TAPTAP. |
+| Branding | Không đề cập tên studio mẹ trên sản phẩm / docs public của TAPTAP. |
 | Repo hiện tại | Build trên `PNCTriet/taptap`; brief thiết kế Đông (`dongnnh2112work/tap-tap`) chỉ đọc. |
 | Database | Mở rộng trên **12 bảng public hiện có** (xem mục 3). Không apply migration cho đến khi HOWL duyệt plan này. |
 | Bảo mật | RLS trên mọi bảng; authorization chỉ qua `app_metadata` + bảng membership server-managed; quota enforce ở **server / database**, không tin client. |
@@ -110,7 +110,7 @@ Nguồn quyền: `app_metadata.role = 'platform_admin'` và bảng `venue_admins
 3. Từ CMS có CTA rõ ràng điều hướng sang trải nghiệm B2C (player routes).
 4. Visitor xem được passport với stamp vừa collect.
 5. RLS không cho visitor tạo / sửa station.
-6. UI EN mặc định, chuyển VI được; không có chữ HOWLSTUDIO.
+6. UI EN mặc định, chuyển VI được; không có tên studio mẹ.
 
 ---
 
@@ -341,7 +341,7 @@ Quota, RLS, backups phải review lại sau mỗi hướng.
 | Auth user trùng hai project | Supabase Auth không share sẵn → dùng cùng Google client + mapping bảng `identity_links`, hoặc chấp nhận mời lại members B2B |
 | Vượt free tier (2 project, 2 Vercel) | Theo dõi limits; xin HOWL duyệt upgrade chỉ khi cần |
 | Regress B2C pilot khi đụng schema chung | Test Playwright B2C chạy bắt buộc trước merge split PR |
-| Nhầm branding / env | Checklist launch; không dùng tên HOWLSTUDIO; review env trên Vercel |
+| Nhầm branding / env | Checklist launch; không dùng tên studio mẹ; review env trên Vercel |
 
 ### 5.5 Acceptance criteria — Phase 3
 1. B2C Admin site và B2B Admin site deploy URL riêng, auth/permission đúng.
@@ -360,7 +360,7 @@ Quota, RLS, backups phải review lại sau mỗi hướng.
 5. **Rewards vs badges:** Giữ module rewards hiện có cho B2C pilot, chuyển hết sang badge 5/10/15, hay ẩn tới sau launch?
 6. **Editor được tạo Room không**, hay chỉ Owner/Admin tạo Room còn Editor chỉ sửa Station/Tag?
 7. **Đặt trạm vật lý TCV:** Phương án pháp lý / quan hệ với Thảo Cầm Viên đã chốt chưa (ảnh hưởng seed B2C thật vs demo-only)?
-8. **Tên thương mại B2B** (tenant-facing product name) — khác hay trùng “TAPTAP”? (Nhắc: không dùng HOWLSTUDIO trên product.)
+8. **Tên thương mại B2B** (tenant-facing product name) — khác hay trùng “TAPTAP”? (Nhắc: không dùng tên studio mẹ trên product.)
 
 ---
 

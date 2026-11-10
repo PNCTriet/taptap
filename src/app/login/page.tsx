@@ -7,6 +7,7 @@ import { Button, Card, Field, Notice, TextInput, useTx } from "@/components/cons
 import { useExplorer } from "@/context/explorer-context";
 import { sanitizeNextPath } from "@/lib/env";
 import { createClientSupabaseClient } from "@/lib/supabase/client";
+import { mergeGuestProgress } from "@/lib/passport-client";
 
 function LoginForm() {
   const tx = useTx();
@@ -28,6 +29,13 @@ function LoginForm() {
       setError(tx("Email or password is incorrect.", "Email hoặc mật khẩu không đúng."));
       setBusy(false);
       return;
+    }
+    // Move any guest stamps (httpOnly guest cookie) into this account before leaving the page.
+    try {
+      const r = await mergeGuestProgress();
+      if (r.merged + r.alreadyOwned > 0) window.sessionStorage.setItem("taptap:merge-notice", JSON.stringify(r));
+    } catch {
+      /* the passport retries the merge on load */
     }
     window.location.assign(next);
   };

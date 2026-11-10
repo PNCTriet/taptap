@@ -9,9 +9,10 @@ type SheetProps = {
   closeLabel: string;
   onClose: () => void;
   children: React.ReactNode;
+  testId?: string;
 };
 
-export function Sheet({ open, title, closeLabel, onClose, children }: SheetProps) {
+export function Sheet({ open, title, closeLabel, onClose, children, testId }: SheetProps) {
   const titleId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
@@ -50,6 +51,7 @@ export function Sheet({ open, title, closeLabel, onClose, children }: SheetProps
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        data-testid={testId}
         className="ui-sheet-panel font-be text-gouache-ink"
       >
         <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-gouache-line" />

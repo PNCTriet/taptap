@@ -4,10 +4,10 @@ import { useState } from "react";
 import { Building2, PawPrint, RotateCcw } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
 import { Button } from "@/components/ui/button";
-import { Card3D } from "@/components/ui/card-3d";
 import { CardReveal } from "@/components/ui/card-reveal";
-import { GouacheArt } from "@/components/ui/gouache-art";
+import { CollectibleCard } from "@/components/ui/collectible-card";
 import { LocaleSwitch } from "@/components/ui/locale-switch";
+import { cardArtSrc, resolveCardArt } from "@/lib/card-art";
 import { TiltButton, TiltProvider } from "@/components/ui/tilt-provider";
 import { AppIcon } from "@/components/ui/app-icon";
 
@@ -148,22 +148,23 @@ export function GatewayLanding() {
               name={card.name[locale]}
               series={card.series[locale]}
               skipLabel={vi ? "Bỏ qua" : "Skip"}
-              celebrate
+              celebrate={false}
               testId="landing-demo-card"
             >
-              <Card3D
+              <CollectibleCard
                 name={card.name[locale]}
                 series={card.series[locale]}
-                code={`DEMO · 0${index + 1}`}
                 fact={card.fact[locale]}
+                imageSrc={(() => {
+                  const art = resolveCardArt(card.id);
+                  return art ? cardArtSrc(art, true) : null;
+                })()}
                 pastel={card.pastel}
                 accent={card.accent}
+                code={`DEMO · 0${index + 1}`}
                 demoLabel="Demo"
                 flipHint={vi ? "Chạm để lật" : "Tap to flip"}
-                sheetCloseLabel={vi ? "Đóng" : "Close"}
-                idleDemo
-                className="h-[220px] w-[156px]"
-                art={<GouacheArt animal={card.animal} pastel={card.pastel} />}
+                className="h-[280px] w-[186px]"
               />
             </CardReveal>
 
