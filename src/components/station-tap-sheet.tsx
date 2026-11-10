@@ -77,10 +77,11 @@ export function StationTapSheet({ resolution }: StationTapSheetProps) {
     if (autoCollectTriggeredRef.current) return;
     autoCollectTriggeredRef.current = true;
 
-    const result = collectStamp(liveStation.id, "nfc");
-    if (result.newlyCollected) {
-      setJustSlammed(true);
-    }
+    void collectStamp(liveStation.id, "nfc", liveStation).then((result) => {
+      if (result.newlyCollected) {
+        setJustSlammed(true);
+      }
+    });
   }, [authLoading, isAuthenticated, hasError, liveStation, collectStamp]);
 
   // Measure live distance if geolocation is available

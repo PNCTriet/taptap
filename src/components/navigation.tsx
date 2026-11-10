@@ -11,7 +11,10 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { locale, setLocale, collectedStamps, stations } = useExplorer();
 
-  const isAdminRoute = pathname?.startsWith("/admin");
+  const isAdminRoute =
+    pathname?.startsWith("/admin") ||
+    pathname?.startsWith("/b2b") ||
+    pathname?.startsWith("/login");
 
   const navItems = [
     {
@@ -155,13 +158,19 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-[#E6DECB]/60 py-6 pb-24 md:pb-6 text-xs text-[#78847E]">
         <div className="mx-auto max-w-4xl px-4 flex items-center justify-between">
           <span>TAPTAP • Tap. Explore. Collect.</span>
-          <Link href="/admin" className="hover:text-[#272E2B] font-semibold">
-            Admin
-          </Link>
+          <span className="flex gap-4">
+            <Link href="/b2b" className="hover:text-[#272E2B] font-semibold">
+              Business
+            </Link>
+            <Link href="/admin" className="hover:text-[#272E2B] font-semibold">
+              Admin
+            </Link>
+          </span>
         </div>
       </footer>
 
       {/* Mobile Bottom Navigation with Sliding Active Indicator Pill */}
+      {!isAdminRoute && (
       <nav
         aria-label="Mobile Bottom Navigation"
         className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-[#E6DECB] bg-white/95 backdrop-blur-md px-2 py-1.5"
@@ -212,6 +221,7 @@ export function NavigationShell({ children }: { children: React.ReactNode }) {
           })}
         </div>
       </nav>
+      )}
     </div>
   );
 }

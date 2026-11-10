@@ -175,8 +175,12 @@ interface ExplorerContextValue {
   ) => CollectedStampRecord | undefined;
   collectStamp: (
     stationId: string,
-    source?: StampSource
-  ) => CollectStampOutcome;
+    source?: StampSource,
+    stationOverride?: PilotStation
+  ) => Promise<CollectStampOutcome>;
+  isPlatformAdmin: boolean;
+  catalogSource: "supabase" | "pilot-seed";
+  refreshPassport: () => Promise<void>;
   issueRedemption: (rewardId: string) => RedemptionRecord | undefined;
   claimReward: (rewardId: string) => RedemptionRecord | undefined;
   markRedemptionRedeemed: (redemptionId: string) => void;
@@ -201,6 +205,78 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUserProfile | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [state, setState] = useState<StoredExplorerState>(createInitialState);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [catalogSource, setCatalogSource] = useState<"supabase" | "pilot-seed">(
+    "pilot-seed"
+  );
+
+  // Server-mapped passport (B2C stamps for the signed-in visitor).
+  const refreshPassport = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const res = await fetch("/api/passport", { cache: "no-store" });
+      if (!res.ok) return;
+      const body = (await res.json()) as {
+        records: Array<{
+          id: string;
+          participant_id: string;
+          stamp_id: string;
+          station_id: string;
+          public_code: string | null;
+          collected_at: string;
+          source: StampSource;
+        }>;
+      };
+      setState((prev) => ({
+        ...prev,
+        collectedStamps: body.records.map((r) => ({
+          id: r.id,
+          participantId: r.participant_id,
+          stampId: r.stamp_id,
+          stationId: r.station_id,
+          publicCode: r.public_code ?? "",
+          collectedAt: r.collected_at,
+          source: r.source,
+        })),
+      }));
+    } catch {
+      // Keep current state on network errors
+    }
+  }, [isSupabaseConfigured]);
+
+  // Live B2C catalog from Supabase (tenant rows excluded server-side).
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let cancelled = false;
+    fetch("/api/catalog", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then(
+        (
+          body: {
+            venues: PilotVenue[];
+            collections: PilotCollection[];
+            stations: PilotStation[];
+          } | null
+        ) => {
+          if (cancelled || !body || body.stations.length === 0) return;
+          setCatalogSource("supabase");
+          setState((prev) => ({
+            ...prev,
+            venues: body.venues.length ? body.venues : prev.venues,
+            collections: body.collections.length
+              ? body.collections
+              : prev.collections,
+            stations: body.stations,
+          }));
+        }
+      )
+      .catch(() => {
+        // Pilot seed stays as fallback
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isSupabaseConfigured]);
 
   const stationsRef = useRef<PilotStation[]>(PILOT_STATIONS);
   useEffect(() => {
@@ -214,6 +290,9 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         const supabase = createClientSupabaseClient();
         const mappedUser = mapSupabaseUser(supaUser);
         setUser(mappedUser);
+        setIsPlatformAdmin(
+          supaUser.app_metadata?.platform_role === "platform_admin"
+        );
 
         // 1. Upsert participant row by auth_user_id
         const { data: participantRow, error: upsertErr } = await supabase
@@ -310,6 +389,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
             earnedBadges: mappedBadges,
             redemptions: mappedRedemptions,
           }));
+          await refreshPassport();
           return;
         }
 
@@ -410,7 +490,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         // Keep current client state if network is temporarily unreachable
       }
     },
-    [isSupabaseConfigured]
+    [isSupabaseConfigured, refreshPassport]
   );
 
   // Hydrate local catalog state & inspect URL auth_error if present
@@ -526,6 +606,7 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
         void syncParticipantFromSupabase(nextSession.user);
       } else {
         setUser(null);
+        setIsPlatformAdmin(false);
         setState((prev) => ({
           ...prev,
           collectedStamps: [],
@@ -703,8 +784,84 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
   );
 
   const collectStamp = useCallback(
-    (stationId: string, source: StampSource = "nfc"): CollectStampOutcome => {
-      const station = state.stations.find((s) => s.id === stationId);
+    async (
+      stationId: string,
+      source: StampSource = "nfc",
+      stationOverride?: PilotStation
+    ): Promise<CollectStampOutcome> => {
+      const station =
+        state.stations.find((s) => s.id === stationId) ?? stationOverride;
+
+      // Live mode: the server validates the tag and writes idempotently.
+      if (isSupabaseConfigured && user && station) {
+        try {
+          const res = await fetch("/api/collect", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              code: station.tag.publicCode,
+              source: source === "qr" ? "qr" : "nfc",
+            }),
+          });
+          const body = (await res.json()) as {
+            ok: boolean;
+            newly_collected?: boolean;
+            record?: {
+              id: string;
+              stamp_id: string;
+              station_id: string;
+              public_code: string;
+              collected_at: string;
+              source: StampSource;
+            };
+            participant_id?: string;
+          };
+          if (!res.ok || !body.ok || !body.record) {
+            return {
+              ok: false,
+              alreadyCollected: false,
+              newlyCollected: false,
+              error: {
+                en: "This checkpoint is currently unavailable for stamp collection.",
+                vi: "Trạm này hiện đang tạm ngưng nhận dấu mộc.",
+              },
+            };
+          }
+          const record: CollectedStampRecord = {
+            id: body.record.id,
+            participantId: body.participant_id ?? state.session.participantId,
+            stampId: body.record.stamp_id,
+            stationId: body.record.station_id,
+            publicCode: body.record.public_code,
+            collectedAt: body.record.collected_at,
+            source: body.record.source,
+          };
+          setState((prev) => ({
+            ...prev,
+            stations: prev.stations.some((s) => s.id === station.id)
+              ? prev.stations
+              : [...prev.stations, station],
+            collectedStamps: prev.collectedStamps.some(
+              (c) => c.stampId === record.stampId
+            )
+              ? prev.collectedStamps
+              : [...prev.collectedStamps, record],
+          }));
+          return {
+            ok: true,
+            alreadyCollected: !body.newly_collected,
+            newlyCollected: Boolean(body.newly_collected),
+            record,
+          };
+        } catch {
+          return {
+            ok: false,
+            alreadyCollected: false,
+            newlyCollected: false,
+            error: { en: "Network error. Try again.", vi: "Lỗi mạng. Thử lại." },
+          };
+        }
+      }
       if (!station) {
         return {
           ok: false,
@@ -765,44 +922,6 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
             : prev.earnedBadges,
       }));
 
-      if (isSupabaseConfigured && user && !state.session.isAnonymous) {
-        const supabase = createClientSupabaseClient();
-        void (async () => {
-          const { error: upsertErr } = await supabase
-            .from("collected_stamps")
-            .upsert(
-              {
-                participant_id: state.session.participantId,
-                stamp_id: station.stamp.id,
-                nfc_tag_id: station.tag.id,
-                source,
-              },
-              { onConflict: "participant_id,stamp_id" }
-            );
-
-          if (!upsertErr && willCompleteCollection && badge) {
-            await supabase.from("participant_badges").upsert(
-              {
-                participant_id: state.session.participantId,
-                badge_id: badge.id,
-              },
-              { onConflict: "participant_id,badge_id" }
-            );
-          }
-
-          if (upsertErr && user.email) {
-            await supabase.rpc("collect_gmail_participant_stamp", {
-              p_email: user.email,
-              p_stamp_id: station.stamp.id,
-              p_station_id: station.id,
-              p_nfc_tag_id: station.tag.id,
-              p_award_badge_id:
-                willCompleteCollection && badge ? badge.id : null,
-            });
-          }
-        })();
-      }
-
       return {
         ok: true,
         alreadyCollected: false,
@@ -813,7 +932,6 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
     [
       state.collectedStamps,
       state.session.participantId,
-      state.session.isAnonymous,
       state.stations,
       isSupabaseConfigured,
       user,
@@ -1107,6 +1225,9 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       isStationCollected: isStampCollected,
       getCollectedRecord,
       collectStamp,
+      isPlatformAdmin,
+      catalogSource,
+      refreshPassport,
       issueRedemption,
       claimReward: issueRedemption,
       markRedemptionRedeemed,
@@ -1142,6 +1263,9 @@ export function ExplorerProvider({ children }: { children: React.ReactNode }) {
       isStampCollected,
       getCollectedRecord,
       collectStamp,
+      isPlatformAdmin,
+      catalogSource,
+      refreshPassport,
       issueRedemption,
       markRedemptionRedeemed,
       resetDemoProgress,

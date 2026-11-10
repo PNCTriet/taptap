@@ -3,93 +3,86 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Award,
-  Building2,
-  FolderKanban,
-  LayoutDashboard,
-  MapPin,
-  Stamp,
-} from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { useExplorer } from "@/context/explorer-context";
+import { PLAYER_HOME } from "@/lib/routes";
 
-const ADMIN_LINKS = [
-  { href: "/admin", labelEn: "Overview", labelVi: "Tổng quan", icon: LayoutDashboard },
-  { href: "/admin/venues", labelEn: "Venues", labelVi: "Điểm đến", icon: Building2 },
-  {
-    href: "/admin/collections",
-    labelEn: "Collections",
-    labelVi: "Bộ sưu tập",
-    icon: FolderKanban,
-  },
-  {
-    href: "/admin/stations",
-    labelEn: "Stations",
-    labelVi: "Trạm & NFC",
-    icon: MapPin,
-  },
-  { href: "/admin/stamps", labelEn: "Stamps", labelVi: "Con dấu", icon: Stamp },
-  {
-    href: "/admin/rewards",
-    labelEn: "Rewards",
-    labelVi: "Phần thưởng",
-    icon: Award,
-  },
+const B2C_LINKS = [
+  { href: "/admin", en: "Overview", vi: "Tổng quan" },
+  { href: "/admin/venues", en: "Venues", vi: "Điểm đến" },
+  { href: "/admin/collections", en: "Collections", vi: "Bộ sưu tập" },
+  { href: "/admin/stations", en: "Stations", vi: "Trạm" },
+  { href: "/admin/stamps", en: "Stamps", vi: "Con dấu" },
+  { href: "/admin/tags", en: "NFC tags", vi: "Thẻ NFC" },
+  { href: "/admin/rewards", en: "Rewards", vi: "Phần thưởng" },
 ];
 
+const B2B_LINKS = [
+  { href: "/admin/b2b", en: "Business", vi: "Doanh nghiệp" },
+  { href: "/admin/b2b/packages", en: "Packages", vi: "Gói" },
+  { href: "/admin/b2b/tenants", en: "Tenants", vi: "Tenant" },
+];
+
+/** HOWL platform admin chrome: B2C CMS + B2B platform sections. */
 export function AdminShell({
   title,
   subtitle,
   children,
 }: {
-  title: string;
+  title?: string;
   subtitle?: string;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const { locale } = useExplorer();
+  const isB2b = pathname?.startsWith("/admin/b2b");
+  const links = isB2b ? B2B_LINKS : B2C_LINKS;
 
   return (
-    <div className="space-y-6">
-      {/* Compact Admin Sub-Navigation */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E6DECB] pb-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {ADMIN_LINKS.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href;
+    <div className="space-y-5">
+      <div className="flex items-center justify-between gap-2">
+        <div role="tablist" className="inline-flex rounded-xl bg-[#F2F2F7] p-1 text-[13px] font-semibold">
+          <Link href="/admin" role="tab" aria-selected={!isB2b} className={`rounded-lg px-3 py-1.5 ${!isB2b ? "bg-white shadow-sm text-[#1D1D1F]" : "text-[#6E6E73]"}`}>
+            B2C CMS
+          </Link>
+          <Link href="/admin/b2b" role="tab" aria-selected={isB2b} className={`rounded-lg px-3 py-1.5 ${isB2b ? "bg-white shadow-sm text-[#1D1D1F]" : "text-[#6E6E73]"}`} data-testid="admin-tab-b2b">
+            B2B
+          </Link>
+        </div>
+        <Link
+          href={PLAYER_HOME}
+          target="_blank"
+          data-testid="open-player-cta"
+          className="inline-flex min-h-[40px] items-center gap-1.5 rounded-xl bg-[#176B61] px-3 text-[13px] font-semibold text-white"
+        >
+          {locale === "vi" ? "Mở trải nghiệm B2C" : "Open B2C experience"}
+          <ExternalLink className="h-3.5 w-3.5" />
+        </Link>
+      </div>
+      <nav aria-label="Admin sections" className="-mx-4 overflow-x-auto px-4">
+        <div className="flex w-max gap-1.5">
+          {links.map((item) => {
+            const active = item.href === "/admin" || item.href === "/admin/b2b" ? pathname === item.href : pathname?.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-extrabold transition-colors ${
-                  active
-                    ? "bg-[#176B61] text-white"
-                    : "bg-white border border-[#E6DECB] text-[#525D58] hover:text-[#272E2B]"
+                className={`whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-semibold ${
+                  active ? "bg-[#1D1D1F] text-white" : "bg-white text-[#3A3A3C] ring-1 ring-black/[0.08]"
                 }`}
               >
-                <Icon className="h-3.5 w-3.5" />
-                <span>{locale === "vi" ? item.labelVi : item.labelEn}</span>
+                {locale === "vi" ? item.vi : item.en}
               </Link>
             );
           })}
         </div>
-
-        <Link
-          href="/health"
-          className="rounded-full bg-[#EAF0FB] px-3 py-1 text-[11px] font-bold text-[#3256AE] hover:underline"
-        >
-          Health
-        </Link>
-      </div>
-
-      {/* Compact Page Heading */}
-      <div>
-        <h1 className="font-display-serif text-2xl font-extrabold text-[#272E2B]">
-          {title}
-        </h1>
-        {subtitle && <p className="text-xs text-[#525D58] mt-0.5">{subtitle}</p>}
-      </div>
-
+      </nav>
+      {title ? (
+        <div>
+          <h1 className="text-[28px] font-bold tracking-tight text-[#1D1D1F]">{title}</h1>
+          {subtitle ? <p className="text-[14px] text-[#6E6E73]">{subtitle}</p> : null}
+        </div>
+      ) : null}
       {children}
     </div>
   );
