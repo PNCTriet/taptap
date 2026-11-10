@@ -17,11 +17,17 @@ export default defineConfig({
       use: { ...devices["iPhone 14"] },
     },
     {
+      name: "Mobile Chrome",
+      use: { ...devices["Pixel 7"] },
+    },
+    {
       name: "Desktop Chrome",
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
+  webServer: process.env.PLAYWRIGHT_BASE_URL
+    ? undefined
+    : {
     command: "pnpm dev",
     url: "http://localhost:3000/api/health",
     reuseExistingServer: !process.env.CI,
