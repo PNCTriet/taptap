@@ -5,7 +5,8 @@
 --   * public.station_taps — one row per NFC/QR tap (repeats allowed)
 --   * public.crm_activity(...) — role-checked read for the dashboard and visitor CRM
 --   * public.tenant_upsert_stamp(...) — editor+ create/edit of a station's stamp
---   * collect_stamp_by_code also writes one station_taps row (same response JSON)
+--   * taptap_collect_for (shared by collect_stamp_by_code and collect_stamp_as_guest)
+--     also writes one station_taps row (same response JSON)
 --
 -- Does not replace or call any function named *_gmail_participant_*.
 -- Does not update existing pilot rows. Existing B2C rows stay tenant_id null.
@@ -294,15 +295,19 @@ end;
 $$;
 
 -- Log every successful resolve as a tap, including repeat visits that do not
--- grant a new stamp. Response JSON is unchanged. Does not touch gmail RPCs.
-create or replace function public.collect_stamp_by_code(p_code text, p_source text default 'nfc')
+-- grant a new stamp. Reconciled with next_passport_guest_merge: the tap insert
+-- lives in the shared helper taptap_collect_for, which both
+-- collect_stamp_by_code (signed in) and collect_stamp_as_guest delegate to.
+-- collect_stamp_by_code itself is NOT replaced. Response JSON is unchanged.
+-- Does not touch gmail RPCs. Privileges on the helper are preserved by
+-- create or replace (it stays revoked from public/anon/authenticated).
+create or replace function public.taptap_collect_for(p_participant uuid, p_code text, p_source text)
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
-  v_res jsonb; v_participant uuid; v_row public.collected_stamps; v_new boolean := false;
+  v_res jsonb; v_row public.collected_stamps; v_new boolean := false;
   v_stamp uuid; v_station uuid; v_tag uuid; v_collection uuid; v_required int; v_have int;
   v_source text;
 begin
-  if (select auth.uid()) is null then raise exception 'FORBIDDEN' using errcode = '42501'; end if;
   v_res := public.resolve_public_tag(p_code);
   if v_res->>'status' <> 'ok' then
     return jsonb_build_object('ok', false, 'status', v_res->>'status');
@@ -311,43 +316,40 @@ begin
   v_station := (v_res->'station'->>'id')::uuid;
   v_tag := (v_res->'tag'->>'id')::uuid;
   v_collection := (v_res->'collection'->>'id')::uuid;
-  v_participant := public.taptap_ensure_participant();
   v_source := case when p_source in ('nfc','qr') then p_source else 'nfc' end;
 
   insert into public.collected_stamps (participant_id, stamp_id, nfc_tag_id, station_id, source)
-    values (v_participant, v_stamp, v_tag, v_station, v_source)
+    values (p_participant, v_stamp, v_tag, v_station, v_source)
     on conflict (participant_id, stamp_id) do nothing
     returning * into v_row;
   if v_row.id is not null then
     v_new := true;
   else
-    select * into v_row from public.collected_stamps where participant_id = v_participant and stamp_id = v_stamp;
+    select * into v_row from public.collected_stamps where participant_id = p_participant and stamp_id = v_stamp;
   end if;
 
   insert into public.station_taps (tenant_id, station_id, participant_id, nfc_tag_id, source, granted, tapped_at)
   values (
     (select tenant_id from public.stations where id = v_station),
-    v_station, v_participant, v_tag, v_source, v_new, timezone('utc'::text, now())
+    v_station, p_participant, v_tag, v_source, v_new, timezone('utc'::text, now())
   );
 
+  perform public.taptap_award_badges(p_participant, v_collection);
   select coalesce((completion_criteria->>'required')::int,
                   (select count(*) from public.stamps where collection_id = v_collection and status = 'active'))
     into v_required from public.collections where id = v_collection;
   select count(*) into v_have from public.collected_stamps cs join public.stamps s on s.id = cs.stamp_id
-    where cs.participant_id = v_participant and s.collection_id = v_collection;
-  if v_required > 0 and v_have >= v_required then
-    insert into public.participant_badges (participant_id, badge_id)
-      select v_participant, b.id from public.badges b where b.collection_id = v_collection
-      on conflict (participant_id, badge_id) do nothing;
-  end if;
+    where cs.participant_id = p_participant and s.collection_id = v_collection;
 
-  return jsonb_build_object('ok', true, 'newly_collected', v_new, 'participant_id', v_participant,
+  return jsonb_build_object('ok', true, 'newly_collected', v_new, 'participant_id', p_participant,
     'record', jsonb_build_object('id', v_row.id, 'stamp_id', v_row.stamp_id, 'station_id', v_station,
       'nfc_tag_id', v_row.nfc_tag_id, 'public_code', v_res->'tag'->>'public_code',
       'collected_at', v_row.collected_at, 'source', v_row.source),
     'collection_progress', jsonb_build_object('have', v_have, 'required', v_required));
 end;
 $$;
+
+revoke all on function public.taptap_collect_for(uuid, text, text) from public, anon, authenticated;
 
 revoke all on function public.crm_activity(text, uuid, timestamptz, uuid) from public, anon;
 revoke all on function public.tenant_upsert_stamp(uuid, text, text, text) from public, anon;
