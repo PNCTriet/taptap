@@ -207,7 +207,7 @@ test.describe("B2B: platform admin, tenant quota, roles, isolation", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await login(page, "OWNER", "/b2b?tenant=demo-toy-studio");
     for (const r of ["rooms", "stations", "members", "active_nfc_tags"]) {
-      await expect(page.getByTestId(`quota-${r}-value`)).toHaveText(/\d+\s*\/\s*\d+/);
+      await expect(page.getByTestId(`quota-${r}-value`)).toHaveText(/\d+\s*\/\s*\d+/, { timeout: 20_000 });
     }
     const dir = process.env.PHASE1_SCREENSHOT_DIR;
     if (dir) await page.screenshot({ path: `${dir}/b2b-dashboard-390x844.png`, fullPage: false });

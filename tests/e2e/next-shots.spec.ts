@@ -29,7 +29,8 @@ test.describe("next review frames", () => {
     await page.screenshot({ path: `${shots}/next-station-or-card.png` });
     await page.screenshot({ path: `${shots}/next-cards-screen.png` });
 
-    await login(page, "OWNER", "/passport");
+    // VISITOR, not OWNER, so this does not race the OWNER merge assertions in next-passport.spec.
+    await login(page, "VISITOR", "/passport");
     await expect(page.getByTestId("passport-section-b2b")).toBeVisible({ timeout: 20_000 });
     await expect(page.getByText("Loading", { exact: true })).toHaveCount(0, { timeout: 20_000 });
     const done = page.getByTestId("guest-merge-done");
@@ -62,11 +63,12 @@ test.describe("next review frames", () => {
     const page = await ctx.newPage();
     await login(page, "OWNER", "/b2b");
     await page.goto("/b2b");
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Unique visitors")).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${shots}/next-b2b-dashboard.png` });
     await page.goto("/b2b/visitors");
-    await page.waitForLoadState("networkidle");
+    await expect(page.getByText(/Demo visitor \d+/).first()).toBeVisible({ timeout: 30_000 });
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${shots}/next-crm.png` });
     await ctx.close();
